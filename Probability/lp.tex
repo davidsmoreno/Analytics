@@ -1,0 +1,249 @@
+\documentclass{article}
+
+\usepackage[spanish]{babel}
+\usepackage{amsfonts}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{geometry}
+
+\geometry{
+ a4paper,
+ left=20mm,
+ top=20mm,
+ right=20mm,
+ bottom=20mm
+ }
+
+\newtheorem{thm}{Teorema}[section]
+\newtheorem{lem}[thm]{Lema}
+\newtheorem{prop}[thm]{Proposición}
+
+
+
+\theoremstyle{definition}
+\newtheorem{defi}[thm]{Definición}
+\newtheorem{exa}[thm]{Ejemplo}
+
+\author{Juan Sebastian Gaitan Escarpeta}
+\title{Introducción a los Espacios $L^P$, $L^\infty$ y espacios de
+Hölder}
+
+\begin{document}
+\maketitle
+\section*{Integral de Lebesgue}
+
+La forma apropiada de introducir los espacios $L^p$, requere definir
+una noción de integral de Lebesgue. Como el objetivo de este artículo
+introductorio no es profundizar en el tema de de teoría de la medida
+ni la integral de Lebesgue, no nos concentraremos en el tema, y el
+lector podría (preeliminarmente) pensar todas las integrales que
+aparecen a continuación como integrales de Riemann, en todo caso, si
+$f$ es integrable en e lintervalo $[a,b]$ en el sentido de Riemann,
+entonces también lo es en el sentido de Lebesgue, mas aún, ambas
+integrales coinciden, es decir:
+\[
+\int_{[a,b]}^{} f(x) \text{d}x=\int_{a}^{b} f(x) \text{d}x.
+\]
+
+La razón precisa por la cual no se puede simplemente usar la integral
+de Riemann, será explicada con precisión en la sección
+\ref{sub:Espacio L1}.
+
+\section{Espacios $L^P$}
+\subsection{Espacio $L^1$}%
+\label{sub:Espacio L1}
+
+\begin{defi}
+El conjunto $\left\{f  \colon X  \to \mathbb{R} : \int_{X}^{}
+|f(x)| \, \text{d}x < \infty \right\}$ se denota por
+$\mathfrak{L}^1(X)$.
+\end{defi}
+
+Podemos definir una relación de equivalencia sobre este conjunto definida por $f\sim g$ si
+y sólo si $\int_{X}^{} |f-g| \text{d}x=0$. Si $X$ es un intervalo real
+y usamos la integral de Riemann, esta relación de equivalencia implica
+que $f$ y $g$ son iguales salvo en un \textit{conjunto de medida 0}.
+La siguiente proposición tiene como objetivo dar luces a la naturaleza
+de esta relación.
+
+\begin{prop}
+Sean $f,g \in \mathfrak{L}^1([a,b])$ funciones continuas, si $f\sim
+g$, entonces $f=g$.
+\end{prop}
+\begin{proof}
+	Demostraremos la contrarecíproca. Suponga que $f\neq g$, entonces
+existe $x_0\in [a,b]$ tal que $f(x_0)\neq g(x_0)$. Esto significa que
+ $|f(x_0)-g(x_0)|\neq 0$. Como $|f-g|$ también es continua, existe un
+intervalo $[c,d]\subseteq [a,b]$ tal que para todo $x\in [c,d]$,
+$|f(x)-g(x)|>0$, lo que significa que $\int_{[c,d]} |f(x)-g(x)|
+\text{d}x>0$, implicando finalmente que $\int_{[a,b]} |f(x)-g(x)|
+\text{d}x >0$.
+\end{proof}
+
+Si en funciones continuas, la relación $\sim$ es exactamente igual a
+una igualdad, el lector se podría preguntar si esto es así en general.
+Veamos un ejemplo:
+
+\begin{exa}
+Considere las funciones $f,g \in \mathfrak{L}^1([0,1])$ dadas por
+\[
+f(x)=
+\begin{cases}
+	1 \text{ si } x=0\\
+  x^2 \text{ en otro caso }.
+\end{cases}
+\]
+\[
+g(x)=x^2
+\]
+Estas dos funciones son distintas puesto que sus valores son distintos
+en $1$, pero es posible verificar que $f\sim g$. La clave es notar que
+estas funciones son \textit{casi} iguales, lo que se puede formalizar
+en terminos de que las funciones coinciden salvo en un conjunto de
+medida $0$.
+\end{exa}
+
+\begin{defi}
+El conjunto $L^1$ se define como el conjunto de clases de equivalencia
+de $\mathfrak{L}^1$ bajo la relación $\sim$.
+\end{defi}
+
+Tomando las funciones del ejemplo anterior, concluimos que en $L^1$,
+$[f]=[g]$, aunque usualmente no se usa la notación $[\cdot ]$ y
+sólo escribimos $f=g$.
+
+Consideremos por un momentos las funciones $f,g \colon [0,1] \to
+\mathbb{R}$ dadas por $f(x)=0$ y 
+\[
+g(x)=
+\begin{cases}
+1 \text{ si } x\in \mathbb{Q} \\
+0 \text{ en otro caso.}
+\end{cases}
+\]
+Estas dos funciones, son \textit{casi} iguales, es decir el conjunto
+en donde difieren ($\mathbb{Q}$) tiene medida cero, luego quisieramos
+$f\sim g$, pero $g$ no es integrable en el sentido de Riemann, luego
+$ \int_{0}^{1} g(x) \text{d}x$ no está definido, mientras que usando
+la integral de Lebesgue, tenemos $ \int_{[0,1]}^{} g(x) \text{d}x=0$,
+y efectivamente $f\sim g$
+
+\begin{defi}
+Para $f\in L^1(X)$, definimos $|f|_{L^1}=\int_{X}^{} |f(x)| \text{d}x$.
+\end{defi}
+
+Esta definción clarifica la necesidad de la relación $\sim$, puesto
+que para que $L^1$ sea un espacio normado, se debe cumplir que
+$|f|_{L^1}=0$ implica $f=0$, lo que sólo es cierto después de tomar
+las clases de equivalencia de $\sim$. Más adelante, con una
+demostración más general, veremos que $L^p$ es un espacio vectorial
+normado.
+
+\subsection{Espacio $L^2$}%
+\label{sub:EspacioL^2}
+
+\begin{defi}
+Una función  $f  \colon X \to \mathbb{R}$, se dice \textit{cuadrado
+integrable}, si $ \int_{X}^{} |f(x)|^2 \text{d}x<\infty$.
+\end{defi}
+
+De manera similar a la sección anterior, definimos $\mathfrak{L}^2(X)$
+como el conjunto de todas las funciones $ f \colon X \to \mathbb{R} $
+cuadrado integrables, y definimos la misma relación de equivalencia $\sim$
+sobre $\mathfrak{L}^2(X)$ como $f\sim_2 g$ si $\int_{{X}}^{{}} {|f-g|}
+\: d{x} {}$ =0. Si el lector está familiarizado con la integral de
+Lebesgue, puede verificar que efectivamente $\sim_2$ al igual que
+$\sim$ es una relación de equivalencia.
+\begin{defi}
+Definimos $L^2$ como el conjunto definido por las clases de
+equivalencia de $\mathfrak{L}^2$ bajo la relación $\sim$.
+\end{defi}
+
+De manera similar a la sección anterior, podemos definir una norma en $L^2$
+
+\begin{defi}
+Para $f \in L^2$ definimos $|f|_{L^2}={\left(\int_{X}^{} |f(x)|^2
+\text{d}x\right)}^{1/2}$.
+\end{defi}
+
+La peculiaridad de $L^2$, es que, además de ser un espacio vectorial
+normado, también tiene un producto interno compatible con esta norma.
+
+\begin{defi}
+Para dos funciones $f,g\in L^2(X)$, definimos 
+\[
+\left<f,g \right> =\int_{X}^{} f(x)g(x) \text{d}x.
+\]
+\end{defi}
+El lector puede verificar que $\left< \cdot, \cdot \right>$ es
+efectivamente un producto interno, y que $\left<f,f \right> =
+|f(x)|_{L^2}^{{2}}$.
+
+\begin{exa}
+Considere las funciones $f(x)=\sin x$ y $g(x)=x^2$ en el conjunto
+$L^2([0,1])$. Entonces tenemos: $\left< f , g \right> =
+\int_{[0,1]}^{} x^2 \sin x \, \text{d}x=
+ -2 + \cos{\left(1 \right)} + 2 \sin{\left(1
+\right)}=0.223244275483933 $. Además, $|f|_{L^2}= \left(\int_{[0,1]}^{}
+{\left(x^2\right)}^2 \text{d}x \right) ^{\frac{1}{2}}=
+0.447213595499958$.
+\end{exa}
+
+Como nota adicional, los espacios con producto interno, tales como
+$L^2$ se conocen como espacios de Hilbert.
+
+\subsection{Espacios $L^p$}%
+\label{sub:EspaciosL^p}
+
+\begin{defi}
+Para cualquier $p\in (1,\infty)$, definimos el conjunto $\mathfrak{L}^p=\left\{ f \colon X \to
+\mathbb{R} : \int_{X}^{} {|f(x)|}^p \text{d}x<\infty \right\}$, junto
+con la relación de equivalencia $f\sim g$ si $\int_{X}^{}
+{|f(x)-g(x)|} \text{d}x=0$. Finalmente definimos el conjunto $L^p$
+como el conjunto de clases de equivalencia de la relación $\sim$.
+\end{defi}
+
+\begin{thm}{(Desigualdad de Minkowski)}
+Sean $f,g\in L^P(X)$, entonces
+
+\[
+|f+g|_{L^p}\le |f|_{L^p}+|g|_{L^p}.
+\]
+\end{thm}
+
+La demostración de la desigualdad de Minkowski está fuera del alcance
+y el propósito de esta introducción, sin embargo este resultado es
+supremamente importante dado que es la desigualdad triangular de la
+$p$-norma. Salvo por este resultado, el lector debería ser capaz de
+demostrar que la $p$-norma satisface todas las condiciones para ser
+una norma de $L^p$. Un resultado mas débil se demostrará a
+continuación para convencer al lector que $L^p$ efectivamente es un
+espacio vectorial.
+
+\begin{lem}
+Sean $s,t\ge 0$ y $p>1$, entonces $(s+t)^p\le 2^{p-1}(s^p+t^p)$.
+\end{lem}
+\begin{proof}
+	Note que la función $f(x)=x^p$ es convexa en los positivos, por lo
+que, de la definición de convexidad con $t=\frac{q}{2}$, tenemos:
+\begin{equation*}
+\begin{split}
+{\left( \frac{1}{2}s+ \frac{1}{2}t \right)}^p &\le
+\frac{1}{2}s^p+\frac{1}{2}t^p\\
+2^p{\left( \frac{1}{2}s+ \frac{1}{2}t \right)}^p &\le
+2^p{\left(\frac{1}{2}s^p+\frac{1}{2}t^p \right)}\\
+(s+t)^p &\le  2^p(s^p+t^p).
+\end{split}
+\end{equation*}
+\end{proof}
+
+
+\begin{proof}
+	Usando el lema anterior y la desigualdad triangular, tenemos:
+\[
+\int_{X}^{} |f+g|^p \text{d}
+\]
+\end{proof}
+
+
+\end{document}
