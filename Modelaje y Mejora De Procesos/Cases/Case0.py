@@ -226,40 +226,30 @@ dataPozoAño = {  # (pozo, año):   costo utilidad
 (costo, utilidad) = lp.splitDict(dataPozoAño)
 
 
-problema=lp.LpProblem("Maximizar utilidad",lp.LpMaximize)
 
-x = lp.LpVariable.dict("perforar", indexs=Pozo_x_Tiempo, lowBound=0, cat='lp.LpBinary')
+def case1():
+    problema=lp.LpProblem("Maximizar utilidad",lp.LpMaximize) #1
+    x = lp.LpVariable.dicts("perforar", Pozo_x_Tiempo, lowBound=0, cat=lp.LpBinary) #2
+    problema+=lp.lpSum(utilidad[(i,t)]*x[(i,t)] for i in Pozos for t in Tiempos),"Funcion objetivo" #3
+    for i in Pozos:
+        problema += lp.lpSum(x[(i, t)] for t in Tiempos) <= 1, f"Restriccion de un Pozo se explota máximo una vez {i}" #4
+    problema+=lp.lpSum(x[(i,t)]*costo[(i,t)] for i in Pozos for t in Tiempos) <= presupuesto, "R2" #5
 
-problema+=lp.lpSum(utilidad[(i,t)]*x[(i,t)] for i in Pozos for t in Tiempos)
+    dataPozoPronedio = {i: (prodMin[i] + prodMax[i]+prodModa[i]) / 3 for i in Pozos} #6
+    for t in Tiempos: #6
+        problema+=lp.lpSum(x[(i,t)]*dataPozoPronedio[i] for i in Pozos) >= metas[t], f"R_3{t}" #6
+    for i in Tiempos: #7
+        problema+=lp.lpSum(x[(i,t)]*operarios[i] for i in Pozos) <= maxOperarios, "R4_"+str(i) #7
 
+    for t in Tiempos: #8
+        problema+=lp.lpSum(x[(i,t)]*generadores[i] for i in Pozos) <= maxGeneradores, f"R_5"+str(t)#8
 
-for i in Pozos:
-    problema += lp.lpSum(x[(i, t)] for t in Tiempos) <= 1, f"Restriccion de un Pozo se explota máximo una vez {i}"
+    problema+=lp.lpSum(x[(i,t)] for t in Tiempos for i in Pozos) <= maxProyectos, f"R_6"+str(t) #9
+    return problema.solve(),x
 
-problema+=lp.lpSum(x[(i,t)]*costo[(i,t)] for i in Pozos for t in Tiempos) <= presupuesto, "R2"
-
-
-dataPozoPronedio = {i: (prodMin[i] + prodMax[i]+prodModa[i]) / 3 for i in Pozos}
-for t in Tiempos:
-    problema+=lp.lpSum(x[(i,t)]*dataPozoPronedio[i] for i in Pozos) >= metas[t], f"R_3{t}"
-
-
-for i in Tiempos:
-    problema+=lp.lpSum(x[(i,t)]*operarios[i] for i in Pozos) <= maxOperarios, "R4_"+str(i)
-
-
-for t in Tiempos:
-    problema+=lp.lpSum(x[(i,t)]*generadores[i] for i in Pozos) <= maxGeneradores, f"R_5"+str(t)
+problema,x=case1()
 
 
-problema+=lp.lpSum(x[(i,t)] for i in Pozos for t in Tiempos) <= maxProyectos, f"R_6"+str(t)
-
-problema.solve()
-
-
-print("Estado (optimizador):", lp.LpStatus[problema.status], end="\n")
-
-# Valor óptimo del portafolio de Petroco
 print("\nUtilidad total = $", lp.value(problema.objective))
 
 # Inversión
@@ -269,24 +259,9 @@ print(
     end="\n\n",
 )
 
-
-matriz = []
-for i in Pozos:
-    fila = []  # Cada fila contiene la información de un pozo
-    for t in Tiempos:
-        if lp.value(x[i, t]) > 0:
-            fila.append(lp.value(x[i, t]))
-        else:
-            fila.append(lp.value(x[i, t]))
-    matriz.append(fila)
-
-pd.DataFrame(matriz, index=Pozos, columns=Tiempos)
+    
 
 
-#print all the x[i,t] variables
-for i in Pozos:
-    for t in Tiempos:
-        if lp.value(x[i, t]) > 0:
-            print(i, t, lp.value(x[i, t]))
+
 
 
