@@ -33,6 +33,51 @@ plt.show()
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-coor=autompg.corr()
+corr=autompg.corr()
 sns.heatmap(corr,xticklabels=corr.columns.values,yticklabels=corr.columns.values)
 plt.show()
+
+import numpy as np
+import statsmodels.api as sm
+
+
+# Create linear regression model
+X = autompg[["wt", "year"]]
+X = sm.add_constant(X)  # Adds a constant (intercept) to the predictor
+y = autompg['mpg']
+
+model = sm.OLS(y, X).fit()
+
+# get the coefficients
+
+n=len(autompg)
+p=len(model.params)
+
+X=np.column_stack((np.ones(n),autompg["wt"],autompg["year"]))
+
+y=autompg["mpg"].values
+
+
+beta_hat_manual=np.linalg.inv(X.T @ X) @ X.T @ y
+print(beta_hat_manual)
+
+print(model.params)
+
+
+### Siempre tiene que ser 1 ya que es la variable constante
+model.conf_int(alpha=0.001, cols=None)
+
+
+
+
+
+# Predictions for new data
+new_cars = pd.DataFrame({'wt': [3500, 5000], 'year': [76, 81]})
+new_cars = sm.add_constant(new_cars)  # Add constant for prediction
+
+
+
+predictions = model.get_prediction(new_cars)
+prediction_summary = predictions.summary_frame(alpha=0.01)  # 99% confidence
+print(prediction_summary)
+
