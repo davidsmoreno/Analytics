@@ -72,6 +72,7 @@ select JOB_TITLE, MIN_SALARY,MAX_SALARY,JOB_IDENT from JOBS where JOB_IDENT IN (
 
 select JOB_TITLE, MIN_SALARY,MAX_SALARY,JOB_IDENT from JOBS where JOB_IDENT IN (select JOB_ID from EMPLOYEES where YEAR(B_DATE)>1976 );
 
+<<<<<<< HEAD
 
     select E.EMP_ID,E.L_NAME,E.DEP_ID,D.DEP_NAME
     from EMPLOYEES AS E 
@@ -154,3 +155,42 @@ BEGIN
 END //
 
 DELIMITER ;
+=======
+select * from EMPLOYEES, JOBS where EMPLOYEES.JOB_ID = JOBS.JOB_IDENT;
+
+select * from EMPLOYEES E, JOBS J where E.JOB_ID = J.JOB_IDENT;
+
+select E.EMP_ID,E.F_NAME,E.L_NAME, J.JOB_TITLE from EMPLOYEES E, JOBS  J where E.JOB_ID = J.JOB_IDENT;
+
+
+Sql Ecercice
+
+Application_Table-----------
+applicationdate,applicationid,applicationstatus,creditscore,requestedamount
+
+loan_table----------------
+loanid,loanamount,interestrate
+
+aplicationid is the unique identifier
+
+
+select year(applicationdate),Month(applicationdate),
+count(applicationid) as total_application,
+AVG(Case when creditscore<300 then null else creditscore end)
+AVG(CASE WHEN applicationstatus='Approved' THEN 1 ELSE 0 END)
+FROM application_table
+where applicationdate>='2018'
+GROUP BY year(applicationdate),Month(applicationdate)
+
+
+Question 2
+
+
+select count(loanid)/sum(case when applicationstatus='Approved' then 1 else 0 end),
+avg(case when loanamount<requestedamount then 1 else 0 end)
+from application_table A
+inner join loan_table L
+on A.applicationid=L.loanid
+where A.applicationdate>='2018'
+GROUP BY year(applicationdate),Month(applicationdate)
+>>>>>>> 6e29ebf (Test.sql)
