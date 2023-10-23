@@ -1,6 +1,0 @@
-\beamer@sectionintoc {1}{Data Exploration and Understanding}{2}{0}{1}
-\beamer@sectionintoc {2}{Data Cleaning}{4}{0}{2}
-\beamer@sectionintoc {3}{Key Performance Indicators (KPIs)}{6}{0}{3}
-\beamer@sectionintoc {4}{KPI Creation}{8}{0}{4}
-\beamer@sectionintoc {5}{Data Visualization}{10}{0}{5}
-\beamer@sectionintoc {6}{Data Analisis}{12}{0}{6}
