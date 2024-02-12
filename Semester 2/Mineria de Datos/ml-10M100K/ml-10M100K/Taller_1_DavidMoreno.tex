@@ -1,0 +1,261 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={Taller 1 Mineria de Datos},
+  pdfauthor={David Morneo},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{Taller 1 Mineria de Datos}
+\author{David Morneo}
+\date{February 08, 2024}
+
+\begin{document}
+\maketitle
+
+\subsubsection{Punto 1}\label{punto-1}
+
+\emph{Pregunta}: Identifique qué procesamiento de datos fue tenido en
+cuenta. Relacione las funciones de R implementadas y explique su
+funcionamiento de forma concreta.
+
+\emph{Respuesta}: Primero observamos que los datos leidos son del tipo
+.dat. Lo que hace el código en la función \textbf{gsub()} es sustituir
+el string ``::'' por un espacio. La función \textbf{str\_split\_fixed()}
+realiza un split de cada elemento del vector anterior, indicando al
+final con un 3 para que cree 3 columnas. Luego, se asignan nombres a las
+columnas utilizando \textbf{colnames(dataframe)\textless-c()} para
+definir el nombre de las columnas.
+
+Posteriormente, realiza un merge de los datos de ratings y movies
+basándose en el \emph{movieId}, que ambas bases de datos comparten, y
+une los datos mediante un Left Join, conservando los ratings como la
+tabla de la izquierda. Depués, divide los datos en conjuntos de Test y
+Validación utilizando la función \textbf{createDataPartition()}, la cual
+recibe la variable respuesta, y el número de veces que se quiere
+dividir(este número puede variar si se utiliza validación curzada) y
+\(p\), el porcentaje de los datos que se utilizarán para validación.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{validation }\OtherTok{\textless{}{-}}\NormalTok{ temp }\SpecialCharTok{\%\textgreater{}\%} 
+     \FunctionTok{semi\_join}\NormalTok{(edx, }\AttributeTok{by =} \StringTok{"movieId"}\NormalTok{) }\SpecialCharTok{\%\textgreater{}\%}
+     \FunctionTok{semi\_join}\NormalTok{(edx, }\AttributeTok{by =} \StringTok{"userId"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+La función \%\textgreater\% representa un pipeline, que permite llamar a
+otras funciones secuencialmente. Esto es útil para realizar varias
+transformaciones en los datos en un solo paso.
+
+\subsubsection{Punto 2}\label{punto-2}
+
+\emph{Pregunta}: Explique cuáles análisis exploratorios hicieron por
+cada variable, ¿qué beneficio le trajo al modelo final? ¿Cuáles son
+algunas funciones clave en ese sentido?
+
+\emph{Respuesta}:
+
+En el análisis exploratorio, se calculo el número de usuarios, de
+peliculas, de generos y se análizo el intervalo de fechas de nuestros
+datos, se hizo esto para los datos de validación y de entrenamiento.
+
+\textbf{Análisis Exploratorio Rating}: Para la variable Rating, se
+realiza un resumen descriptivo, incluyendo la media y la desviación
+estándar.
+
+Luego, se crea una gráfica de barras contando el número de ratings por
+cada 0.5.
+
+Posteriormente, se elabora la gráfica ordenada de mayor a menor. Una de
+las funciones clave en estos gráficos es \textbf{ggplot(data=DataFrame,
+aes(x, y)) + Geom(additional parameters)}. Esta función recibe el
+conjunto de datos; la función aes() define el mapeo entre los datos (se
+elige qué se va a graficar); y el tercer parámetro se añade para
+especificar qué tipo de gráfico se desea crear, ya sea de línea o de
+barras, además de los demás parámetros que agregan el título, nombres y
+demás.
+
+Otra función que me parecio interesante fue
+\textbf{mutate(group=cut(n\_rating\_of\_movie,breaks=c(-Inf,mean(n\_rating\_of\_movie),Inf)}
+Lo que hace \textbf{mutate()} lo que nos permite es agregar variables a
+un dataframe of modificar algunas que ya sean existentes y la variable
+\textbf{cut()} se utiliza para dividir el rango de una variable continua
+en intervalos. luego cuando utilizamos **breaks=c(-Inf,mean(),Inf), le
+definimos los intervalos. Como sabemos en R un número Inf es el
+equivalente a 2\^{}31.
+
+\textbf{Análisis Exploratio Movie}: Para el análisis de las peliculas
+una de las funciones importantes es \textbf{group\_by(movieId)} la cual
+como su nombre lo indica agrupa filas en este caso por la media y la
+desviación estandar, puero puede utilizarce para suma, media, y otras
+funciones más para organizar mejor los datos y hacer gráficos más
+especificos.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{movie\_sum }\OtherTok{\textless{}{-}}\NormalTok{ edx }\SpecialCharTok{\%\textgreater{}\%} \FunctionTok{group\_by}\NormalTok{(movieId) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}\AttributeTok{n\_rating\_of\_movie =} \FunctionTok{n}\NormalTok{(), }
+            \AttributeTok{mu\_movie =} \FunctionTok{mean}\NormalTok{(rating),}
+            \AttributeTok{sd\_movie =} \FunctionTok{sd}\NormalTok{(rating))}
+\end{Highlighting}
+\end{Shaded}
+
+Una función crucial en el análisis de datos con R es
+\textbf{summarize()}, que se emplea para generar resúmenes de los datos.
+En el contexto mencionado, esta función se utiliza para calcular
+estadísticas clave como la media y la desviación estándar, organizando
+los datos por \emph{MovieId}.
+
+Un análisis visual particularmente revelador es la exploración de la
+densidad del número de calificaciones. Este enfoque permite identificar
+cómo se distribuyen predominantemente las calificaciones en términos
+porcentuales.
+
+La visualización gráfica es instrumental en este proceso, ya que
+facilita la identificación de valores atípicos (outliers) que agregan
+significado y profundidad a nuestra comprensión de los datos.
+
+Dentro de las herramientas gráficas que encontramos útiles están
+\textbf{geom\_hist()}, \textbf{geom\_point()}, y \textbf{geom\_vline()}.
+Este último, por ejemplo, se utiliza para añadir una línea vertical en
+el valor medio de las calificaciones por película, mediante el uso de
+\textbf{aes(xintercept = mean(n\_rating\_of\_movie))}.
+
+\subsubsection{Punto 3}\label{punto-3}
+
+\emph{Pregunta}: Identifique la estructura de visualización utilizada.
+¿Cuáles funciones fueron implementadas y cuál es su funcionalidad de
+forma concreta?
+
+\emph{Respuesta}: En el documento, detallo las funciones clave para la
+creación de gráficos.
+
+\subsubsection{Punto 4}\label{punto-4}
+
+\emph{Pregunta}: ¿Qué le llamó la atención de esta aproximación? ¿Qué
+hubiera hecho diferente?
+
+\emph{Respuesta}: En la fase de análisis exploratorio, la estrategia de
+segmentar las calificaciones en dos grupos, basándose en el promedio,
+fue fundamental para el reconocimiento de valores atípicos y su posible
+influencia en el modelo. Esta división revela variaciones en las
+preferencias o sesgos de los usuarios.
+
+Me resultó particularmente revelador cómo se mejoró la precisión del
+modelo mediante la incorporación de un efecto individual por usuario
+(bjbj\hspace{0pt}), ajustando las predicciones conforme a si un usuario
+tiende a calificar por encima o por debajo del promedio, utilizando la
+fórmula \(b_j = \bar{r}_j - \bar{r}\)
+
+Una estrategia alternativa que contemplaría implica analizar las
+correlaciones entre variables dentro de categorías determinadas para
+destacar películas altamente calificadas. Luego procedería a realizar un
+análisis de agrupación (clustering) con dichas variables para
+identificar posibles categorías distintivas. Si se descubren categorías
+relevantes, las incorporaría al modelo con el objetivo de mejorar la
+precisión de las predicciones. Adicionalmente, examinaría los valores
+atípicos y consideraría tácticas para atenuar su influencia, como la
+aplicación de técnicas de palanca en la regresión lineal.
+
+\end{document}

@@ -1,0 +1,23 @@
+---
+title: "My R Markdown Document"
+author: "David Moreno"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  html_document:
+    theme: cosmo
+---
+
+# Introduction
+
+This is a basic R Markdown document template with HTML output.
+
+## Section 1
+
+Here is some text.
+
+```{r}
+# Example R code chunk
+summary(cars)
+# Another example R code chunk
+plot(cars)
+```

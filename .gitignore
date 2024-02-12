@@ -2,6 +2,8 @@
 *.d
 
 # Compiled Object files
+
+
 *.slo
 *.lo
 *.o
@@ -32,3 +34,4 @@
 *.app
 *.xlsx
 *.csv
+*.dat
