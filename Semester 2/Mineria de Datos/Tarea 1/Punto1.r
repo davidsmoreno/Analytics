@@ -290,11 +290,9 @@ pca_df_with_centroids <- pca_df_with_centroids %>%
   mutate(outlier = ifelse(distance > mean_distance + 2*sd_distance, TRUE, FALSE))
 
 # Filter out outliers
-pca_df_no_outliers <- filter(pca_df_with_centroids, outlier == FALSE)
+df_no_outliers <- filter(pca_df_with_centroids, outlier == FALSE)
 
 # Punto2
-
-df_data_1 <- df_data_1[order(df_data_1$Date), ]
 
 
 
@@ -303,6 +301,12 @@ library(dplyr)
 library(lubridate)
 
 # Asegurando que 'Date' es de tipo fecha y hora
+
+df_data_1 <- df_data_1[order(df_data_1$Date), ]
+
+
+
+
 df_data_1$Date <- as.POSIXct(df_data_1$Date, format="%d/%m/%Y %H:%M")
 
 # Crear nuevas columnas basadas en la fecha
@@ -356,3 +360,89 @@ ggplot(df_monthly, aes(x = YearMonth, y = Monthly_Avg, group = 1)) +
   theme_minimal() +
   labs(title = "Media Móvil Mensual para DMA A", x = "Año-Mes", y = "Promedio Mensual") +
   theme(axis.text.x = element_text(angle = 65, vjust = 0.6))
+
+
+library(dplyr)
+library(zoo)
+
+# Asumiendo que `datos` es tu dataframe y tiene columnas `fecha` y `consumo_diario`
+
+datos <- df_data_1 %>%
+  arrange(Date) %>%
+  mutate(media_movil_5d = rollapply(consumo_diario, 5, mean, partial = TRUE, align = 'right'))
+
+# Para calcular la media móvil por semana o por hora, los datos deben ser preprocesados/agrupados adecuadamente.
+
+
+
+library(zoo)
+library(dplyr)
+library(lubridate)
+
+# Asumiendo que df_data_1 ya ha sido cargado y tiene la columna 'Date' en el formato correcto
+df_data_1 <- df_data_1 %>%
+  mutate(
+    Seconds = second(Date),
+    Minutes = minute(Date),
+    Hours = hour(Date),
+    DayOfWeek = wday(Date, label = TRUE), # Esto te dará el día de la semana
+    Day = day(Date),
+    Week = week(Date),
+    Month = month(Date, label = TRUE), # Esto te dará el mes como un valor categórico
+    Year = year(Date)
+  ) %>%
+  arrange(Date) # Asegúrate de que los datos estén ordenados por fecha
+
+# Calculamos las medias móviles para los intervalos especificados, sin permitir NA
+df_data_1$MA_5 <- rollapply(df_data_1$`DMA A`, width = 5, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_10 <- rollapply(df_data_1$`DMA A`, width = 10, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_13 <- rollapply(df_data_1$`DMA A`, width = 13, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_60 <- rollapply(df_data_1$`DMA A`, width = 60, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_90 <- rollapply(df_data_1$`DMA A`, width = 90, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+
+# Mostrar las primeras filas para verificar
+head(df_data_1)
+
+
+
+
+# Suponiendo que df_data_1 ya está cargado y preparado con las columnas de tiempo correctas
+
+# Calculamos las medias móviles para los intervalos especificados
+df_data_1$MA_5 <- rollapply(df_data_1$`DMA A`, width = 5, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_10 <- rollapply(df_data_1$`DMA A`, width = 10, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_13 <- rollapply(df_data_1$`DMA A`, width = 13, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_60 <- rollapply(df_data_1$`DMA A`, width = 60, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+df_data_1$MA_90 <- rollapply(df_data_1$`DMA A`, width = 90, FUN = mean, fill = NA, align = 'right', na.rm = TRUE)
+
+# Creamos el gráfico con ggplot2
+ggplot(df_data_1, aes(x = Date)) +
+  geom_line(aes(y = `DMA A`), color = "blue") +
+  geom_line(aes(y = MA_5), color = "orange") +
+  geom_line(aes(y = MA_10), color = "green") +
+  geom_line(aes(y = MA_13), color = "red") +
+  geom_line(aes(y = MA_60), color = "purple") +
+  geom_line(aes(y = MA_90), color = "brown") +
+  labs(title = "Moving Averages for DMA A", x = "Date", y = "DMA A") +
+  theme_minimal() +
+  theme(legend.position = "none") # Oculta la leyenda si es necesario
+
+
+
+library(ggplot2)
+library(dplyr)
+library(zoo)
+
+# Suponiendo que df_data_1 ya está cargado y preparado con las columnas de tiempo correctas
+# Asegúrate de que Date esté en el formato de fecha adecuado, si no, conviértelo
+df_data_1$Date <- as.Date(df_data_1$Date)
+
+library(ggplot2)
+library(dplyr)
+library(zoo)
+
+library(dplyr)
+
+# Assuming df_data_1 is your dataset with the Date column
+df_data_1 <- mutate(df_data_1, Hour = lubridate::hour(Date))
+
