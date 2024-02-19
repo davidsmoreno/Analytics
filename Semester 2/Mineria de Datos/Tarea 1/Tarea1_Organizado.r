@@ -1,4 +1,22 @@
 # Read Inflow Data
+
+##Set Location on Mac
+#setwd("/Users/davidmoreno/Documents/University and Codes/Analytics/Semester 2/Mineria de Datos/Tarea 1")
+#Sys.setenv(PATH = paste("/opt/homebrew/bin", Sys.getenv("PATH"), sep=":"))
+
+
+# Importing libraries
+library(dplyr)      # For data manipulation
+library(ggplot2)    # For data visualization
+library(tidyr)      # For data tidying
+library(readr)      # For reading data
+library(readxl)     # For reading excel files
+library(psych)      # For descriptive statistics
+library(zoo)        # For handling missing values
+
+
+
+
 weather <- read_excel("WeatherData_1.xlsx", skip = 1, col_names = c("Date", "Rainfall depth (mm)", "Air temperature (°C)", "Air humidity (%)", "Windspeed (km/h)"))
 
 # Read inflow data

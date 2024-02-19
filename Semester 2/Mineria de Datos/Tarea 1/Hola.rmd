@@ -11,6 +11,22 @@ output:
     highlight: tango
 ---
 
+```{r,echo=FALSE}
+library(dplyr)      # For data manipulation
+library(ggplot2)    # For data visualization
+library(tidyr)      # For data tidying
+library(readr)      # For reading data
+library(readxl)     # For reading excel files
+library(psych)      # For descriptive statistics
+library(zoo)        # For handling missing values
+library(corrplot)   # Correlation Matrix
+library(lubridate)  #Extract Hour
+library(gridExtra)
+
+```
+
+
+
 
 # Punto 1.1
 Primero, vamos a unir las bases de datos, identificando y eliminando duplicados basados en las fechas para conservar únicamente el primer registro. Luego, aplicaremos una técnica de imputación (asignación o eliminación) para manejar los datos faltantes.
@@ -187,13 +203,14 @@ Para esta gráfica vemos algo interesante: Para esta gráfica, observamos un pat
 
 
 ```{r,fig.width=10, fig.height=8}
-df_data_1 <- df_data_1 %>%
+
+df_data_3 <- df_data_1 %>%
   mutate(Year = year(Date),
          Month = month(Date),
          YearMonth = as.yearmon(Date))
 
 # Group by year and month to calculate the monthly average of DMA A
-monthly_avg <- df_data_1 %>%
+monthly_avg <- df_data_3 %>%
   group_by(YearMonth) %>%
   summarise(MonthlyAvg_DMA_A = mean(`DMA A`, na.rm = TRUE))
 
@@ -201,8 +218,6 @@ monthly_avg <- df_data_1 %>%
 monthly_avg$MovingAvg_1M <- rollapply(monthly_avg$MonthlyAvg_DMA_A, width = 1, FUN = mean, by.column = TRUE, fill = NA, align = 'right')
 
 # Visualization with ggplot2
-if (!require(ggplot2)) install.packages("ggplot2")
-library(ggplot2)
 
 ggplot(monthly_avg, aes(x = YearMonth, y = MovingAvg_1M)) +
   geom_line() +
@@ -255,7 +270,6 @@ p24 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_24)) +
 library(gridExtra)
 grid.arrange(p1, p5, p10, p24, ncol = 2)
 
-
 ```
 
 
@@ -282,20 +296,22 @@ Para esto utilizamos una gráfica Within-Cluster Sum of Squares WSS y probamos p
 
 ```{r}
 
-# Define the range of k values to try
-k.max <- 10 # Maximum number of clusters to consider
+# Extract only numeric columns from the dataframe
+numeric_data <- df_data_1[, sapply(df_data_1, is.numeric)]
+
+# Initialize WSS vector
 wss <- numeric(k.max)
 
 # Calculate WSS for each k
 for (k in 1:k.max) {
-  wss[k] <- sum(kmeans(data, centers = k, nstart = 20)$withinss)
+  wss[k] <- sum(kmeans(numeric_data, centers = k, nstart = 20)$withinss)
 }
 
-
+## Warning: did not converge in 10 iterations
 
 library(ggplot2)
 
-k_values <- 1:20  # the range of k you tested
+k_values <- 1:k.max  # the range of k you tested
 ggplot(data.frame(k = k_values, WSS = wss), aes(x = k, y = WSS)) +
   geom_point() +
   geom_line() +
@@ -312,6 +328,15 @@ Observamos que tenemos un valor bajo de WSS, que cuantifica la compacidad de los
 ### K elegido
 
 ```{r}
+numeric_df <- df_data_1 %>%
+  select_if(is.numeric)
+
+# Perform PCA on numeric data
+pca_result <- prcomp(numeric_df, scale. = TRUE)
+
+pca_df <- as.data.frame(pca_result$x)  # Use principal components as dataframe
+
+
 k <- 10
 km_res <- kmeans(pca_df[, c("PC1", "PC2")], centers = k, nstart = 25)
 
@@ -444,3 +469,6 @@ grid.arrange(p1, p5, p10, p24, ncol = 2)
 ```
 
 Y también para los intervalos de 1,5, 10 y 24 meses no se ve mucha la diferencia, cuando quitamos los outliers para la gráfica del DMA A
+
+
+
