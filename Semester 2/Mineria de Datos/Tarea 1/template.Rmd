@@ -1,0 +1,105 @@
+---
+title: "Taller 1 Mineria de Datos"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+---
+
+# David
+
+## Punto 1
+
+Primero observamos Las caracteristicas de cada area, esto es:
+Vemos que en el DNA 
+
+DMA A - Distrito hospitalario: Representa el caudal de agua utilizado en un área que incluye instalaciones de atención médica y hospitales. Es probable que tenga un consumo constante debido a las operaciones de salud que se llevan a cabo las 24 horas del día.
+
+DMA B - Distrito residencial en el campo: Indica el flujo de agua en una zona predominantemente residencial situada en un entorno rural o semi-rural. El consumo puede variar según las rutinas diarias de los residentes.
+
+DMA C - Distrito residencial en el campo: Al igual que el DMA B, esta cifra refleja el uso del agua en un área residencial en un entorno rural o semi-rural.
+
+DMA D - Distrito residencial/comercial suburbano: Muestra el caudal en una zona mixta que combina hogares con establecimientos comerciales, generalmente ubicados en los suburbios.
+
+DMA E - Distrito residencial/comercial cerca del centro de la ciudad: Representa el flujo de agua en un área de uso mixto con propiedades residenciales y comerciales, localizada cerca del núcleo urbano de una ciudad.
+
+DMA F - Distrito suburbano que incluye instalaciones deportivas y edificios de oficinas: Refleja el consumo de agua en un área suburbana que incluye no solo propiedades residenciales, sino también instalaciones para deportes y edificios de oficinas, lo que sugiere un uso mixto residencial, recreativo y comercial.
+
+DMA G - Distrito residencial cerca del centro de la ciudad: Indica el uso del agua en un área residencial con alta densidad de viviendas, ubicada cerca de la parte central de una ciudad, lo que puede implicar mayor tráfico y densidad de población.
+
+DMA H - Distrito del centro de la ciudad: Muestra el caudal en el núcleo urbano de una ciudad, caracterizado por un desarrollo de alta densidad, propiedades comerciales, oficinas, comercios al detalle y posiblemente edificios altos.
+
+DMA I - Distrito comercial/industrial cerca del puerto: Representa el flujo de agua en un área con una concentración de actividades comerciales e industriales, probablemente con almacenes, fábricas y centros de distribución, situada cerca de un puerto para facilitar el acceso al envío y recepción de bienes.
+
+DMA J - Distrito comercial/industrial cerca del puerto: Al igual que el DMA I, esta cifra también refleja el flujo de agua en una zona comercial e industrial cerca de un puerto, lo que implica actividades industriales y logísticas significativas.
+
+
+
+## Code Execution
+
+
+
+```{r,warning=FALSE}
+
+# Importing libraries
+library(dplyr)      # For data manipulation
+library(ggplot2)    # For data visualization
+library(tidyr)      # For data tidying
+library(readr)      # For reading data
+library(readxl)     # For reading excel files
+
+
+
+# Read weather data
+weather <- read_excel("WeatherData_1.xlsx", skip = 1, col_names = c("Date", "Rainfall depth (mm)", "Air temperature (°C)", "Air humidity (%)", "Windspeed (km/h)"))
+
+# Read inflow data
+inflow <- read_excel("InflowData_1.xlsx", skip = 1, col_names = c("Date", "DMA A", "DMA B", "DMA C", "DMA D", "DMA E", "DMA F", "DMA G", "DMA H", "DMA I", "DMA J"))
+
+# Convert Date column to POSIXct format
+weather$Date <- as.POSIXct(weather$Date, format = "%d/%m/%Y %H:%M")
+inflow$Date <- as.POSIXct(inflow$Date, format = "%d/%m/%Y %H:%M")
+
+# Merge inflow and weather data frames by "Date" column, retaining all rows from inflow
+df_data <- merge(inflow, weather, by = "Date", all.x = TRUE)
+
+# Remove duplicate rows based on the Date column, keeping only the first occurrence
+df_data <- df_data[!duplicated(df_data$Date, fromLast = TRUE), ]
+
+df_data <- df_data %>%
+  mutate_if(is.character, ~ ifelse(. == "#N/A", NA, .))
+
+
+
+
+```
+Primero vamos a unir las dos bases de datos. Para no perder muchos datos, vamos a hacer un left join de la tabla que tiene una dimensión mayor. Vemos que la matriz Weather tiene una dimensión de 13847 y 13680 numero de observaciones. Para esto vamos a tomar la base de InflowDAta y vamos a agregarle los datos que coincidadn con, Vemos que todos nuestros datos coinciden. Y asi comenzamos a trabajaor con la base de datos más estructurada.
+
+### Limpieza de los Datos
+
+
+```{r}
+na_proportion <- colMeans(is.na(df_data))
+
+# Create a data frame with column names and NA proportions
+na_summary <- data.frame(
+  Column = names(na_proportion),
+  NA_Proportion = na_proportion
+)
+
+na_summary <- na_summary %>%
+  arrange(desc(NA_Proportion))
+
+# Print the summary
+print(na_summary)
+```
+
+Aqui vemos algo interesante Para la columna F, I,G sobrepasan el 10 pociento de vacio en los datos, y vemos que las variables windspeed, Rainfall depth  y Air temperature no tienen problemas con los vacios o NA. 
+
+Vamos a hacer dos análisis uno, quitando los Nan y otro haciendo un kmeans y llenando los vacios de esta forma.
+
+Comencemos entonces para los vacios
+
+### 
