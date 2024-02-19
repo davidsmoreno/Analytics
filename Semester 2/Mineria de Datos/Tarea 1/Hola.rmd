@@ -1,15 +1,18 @@
 ---
 title: "Tarea 1 Mineria de Datos"
-author: "David Romero, Luisa De La Horita,David Moreno"
+author: "David Romero, Luisa De La Horita, David Moreno"
 date: "`r format(Sys.time(), '%Y-%m-%d')`"
 output:
   html_document:
     toc: true
     toc_float: true
-    number_sections: true
+    number_sections: false  # Set to false to disable section numbering
     theme: cosmo
     highlight: tango
+    code_folding: show
 ---
+
+
 
 ```{r,echo=FALSE}
 library(dplyr)      # For data manipulation
@@ -28,7 +31,7 @@ library(gridExtra)
 
 
 
-# Punto 1.1
+# Punto 1
 Primero, vamos a unir las bases de datos, identificando y eliminando duplicados basados en las fechas para conservar únicamente el primer registro. Luego, aplicaremos una técnica de imputación (asignación o eliminación) para manejar los datos faltantes.
 
 ```{r, warning=FALSE}
@@ -391,7 +394,24 @@ Tras identificar nuestros clusters, procedemos a calcular los centroides de cada
 ### Resultdos Sin Outliers
 
 
-Ahora vamos a hacer el análisis sin outliers 
+Ahora vamos a hacer el análisis sin outliers, primero veamos la cantidad de Outliers que quitamos de nuestros datos.
+
+
+```{r}
+# Store the dimensions of each dataframe
+dimensions_df <- dim(df_data_1)
+dimensions_no_outliers <- dim(df_no_outliers)
+
+# Calculate the difference in dimensions
+difference <- dimensions_df - dimensions_no_outliers
+
+# Print dimensions and difference in one statement
+cat("Dimensions of df_data_1:", paste(dimensions_df, collapse = "x"), "\n",
+    "Dimensions of df_no_outliers:", paste(dimensions_no_outliers, collapse = "x"), "\n",
+    "Difference (outliers removed):", paste(difference, collapse = "x"), "\n")
+
+```
+Aquí vemos que hemos eliminado 613 valores atípicos en nuestros datos.
 
 
 ```{r}
@@ -469,6 +489,5 @@ grid.arrange(p1, p5, p10, p24, ncol = 2)
 ```
 
 Y también para los intervalos de 1,5, 10 y 24 meses no se ve mucha la diferencia, cuando quitamos los outliers para la gráfica del DMA A
-
 
 
