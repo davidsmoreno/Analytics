@@ -25,6 +25,10 @@ library(zoo)        # For handling missing values
 library(corrplot)   # Correlation Matrix
 library(lubridate)  #Extract Hour
 library(gridExtra)
+library(FactoMineR)
+library(factoextra)
+
+
 
 ```
 
@@ -489,5 +493,434 @@ grid.arrange(p1, p5, p10, p24, ncol = 2)
 ```
 
 Y también para los intervalos de 1,5, 10 y 24 meses no se ve mucha la diferencia, cuando quitamos los outliers para la gráfica del DMA A
+
+
+
+
+
+# 2 punto
+
+Spotify es una empresa para la reproducción de música vía streaming que se ha venido consolidando como una de las plataformas más relevantes a nivel mundial. Considere que usted se ha conectado con la API de Spotify y ha podido descargar la información de la banda “Los Planetas”, una banda española de indie rock que ha estado activa desde 1993 Dentro de la información disponible descargada se encuentra nombres de canciones, nombres de los álbumes, duración o tempo. Adicionalmente, tiene unos descriptores en términos a qué tan positiva, bailable, enérgica, acústica, instrumental o en vivo fue cada canción. Con base en esta base de datos, se le pide lo siguiente:
+
+## 1.
+Realice un análisis de PCA que permita describir el tipo de canciones. Por ejemplo, ¿Cómo se relaciona las canciones bailables con las de tipo instrumental? ¿Las canciones con larga duración con las enérgicas? ¿Las canciones en vivo con las acústicas?
+
+Primero carga y descriptivo de que trae la base de datos
+
+```{r carga de datos}
+# Establece el directorio de trabajo
+#setwd("C:/Users/O004607/Documents/Maestria/SegundoSemestre/MineriaDatos/Clase4/")
+
+# Carga el archivo de datos 'canciones.RData'
+load("canciones.RData")
+
+# Muestra las primeras filas de 'canciones'
+head(canciones)
+
+```
+Observando el head de los datos vemos que
+
+id: Identificador único de la canción.
+
+name: Nombre de la canción.
+
+album_id: Identificador único del álbum al que pertenece la canción.
+
+album: Nombre del álbum.
+
+duration: Duración de la canción en segundos.
+
+tempo: Tempo de la canción en golpes por minuto (BPM).
+
+valence: Una medida de la positividad musical, que describe la musicalidad de las canciones en términos de ser más positivas o alegres.
+
+danceability: Una medida de cuán adecuada es una canción para bailar basada en una combinación de elementos musicales incluyendo el tempo, estabilidad del ritmo, fuerza del beat, y regularidad general.
+
+energy: Una medida que representa la intensidad y actividad percibida de una canción.
+
+acousticness: Una medida que indica cuán acústica es una canción.
+
+instrumentalness: Una medida que indica qué tan instrumental es una canción.
+
+liveness: Detecta la presencia de una audiencia en la grabación. Altos valores para este atributo indican que la canción fue realizada en vivo.
+
+speechiness: Detecta la presencia de palabras habladas en una canción. Un valor más alto significa que la canción contiene más palabras habladas.
+
+
+```{r carga de datos2}
+# Obtiene y muestra las dimensiones de 'canciones' (filas, columnas)
+dim(canciones)
+```
+El archivo contiene datos con 109 filas y 13 columnas. Hay información sobre 109 canciones, cada una descrita por 13 atributos.
+
+```{r carga de datos3}
+# Muestra un resumen estadístico de 'canciones'
+
+summary(canciones)
+```
+se puede inferir para cada variable que
+
+Duration: Las canciones tienen una duración que varía considerablemente, con un rango de 88.4 a 621.7 segundos.
+
+Tempo: El tempo fluctúa entre 59.7 y 215.1 BPM, mostrando una amplia gama de ritmos.
+
+Valence (Positivity): Con valores de 4.70 a 96.70, la valencia muestra que las canciones abarcan un espectro emocional amplio, 
+
+Danceability: La bailableidad varía de 6.80 a 75.00, algunas canciones son más adecuadas para bailar que otras.
+
+Energy: Los niveles de energía oscilan entre 21.90 y 97.20, la banda produce tanto música tranquila como pistas llenas de vigor.
+
+Acousticness: La acústica tiene un rango de 0.0 a 78.7.
+
+Instrumentalness: Con valores de 0 a 92.70..
+
+Liveness: La vivacidad varía de 4.90 a 91.20.
+
+Speechiness: La hablabilidad tiene un rango de 2.7 a 9.0.
+
+
+```{r carga de datos4}
+# Cargar paquetes necesarios para PCA y visualización
+library(FactoMineR)
+library(factoextra)
+
+# Seleccionar variables numéricas de 'canciones' para el análisis PCA
+datos_pca <- canciones[, c("duration", "tempo", "valence", "danceability", "energy", "acousticness", "instrumentalness", "liveness", "speechiness")]
+
+# Ejecutar PCA, escalando las variables para igualar su varianza y sin generar gráficos automáticamente
+pca_result <- PCA(datos_pca, scale.unit = TRUE, graph = FALSE)
+
+# Visualizar los eigenvalores para evaluar la cantidad de componentes principales a retener
+fviz_eig(pca_result, addlabels = TRUE)  # Gráfico de eigenvalores
+eig.val <- get_eigenvalue(pca_result)  # Obtener y mostrar eigenvalores
+
+# Extraer y mostrar las variables y su contribución al PCA
+var <- get_pca_var(pca_result)  # Obtener información de las variables en el PCA
+var
+
+```
+
+En el análisis PCA de las canciones de "Los Planetas", se retendrán cinco dimensiones, que en conjunto explican el 81.09% de la varianza total del conjunto de datos. Esta decisión se basa en la contribución progresiva de cada dimensión: la primera aporta el 25.59%, la segunda el 23.10%, la tercera el 11.84%, la cuarta el 10.86%, y la quinta un significativo 9.70%. 
+
+```{r carga de datos5}
+# Ejecutar PCA reteniendo las primeras 4 componentes principales, escalando variables para igualar su varianza, sin generar gráficos automáticamente
+
+pca_result <- PCA(datos_pca, scale.unit = TRUE, ncp = 4, graph = FALSE)
+
+```
+
+### Primer vs segundo eje
+
+```{r carga de datos6}
+
+# Visualizar variables del PCA por contribución en las dos primeras dimensiones
+# Colorea las variables según su contribución, usa un gradiente de color, y evita la superposición de texto
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(1, 2))
+
+# Visualizar variables del PCA por calidad de representación (cos2) en las dos primeras dimensiones
+# Colorea las variables según su cos2, usa un gradiente de color, y evita la superposición de texto
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(1, 2))
+
+
+```
+
+
+Es importante tener en cuenta tanto la contribución al eje como la calidad de respresentación dada por el cos2. Observamos que las variables que más aportan a estas dos dimensiones son energia, valence y danceability
+
+Destacan las relaciones:
+
+Energía y Tempo: Estas variables están alineadas en la misma dirección en la primera dimensión, lo que indica que las canciones con un tempo más rápido tienden a ser percibidas como más enérgicas. .
+
+Bailableidad y Valencia: Se encuentran cercanas al origen y dispersas entre las dos dimensiones, lo que implica que su variabilidad no es capturada predominantemente por las dos primeras dimensiones del PCA. Sin embargo, su ubicación sugiere que la bailableidad y la valencia pueden tener una influencia moderada y equilibrada en ambas dimensiones, lo que podría interpretarse como una asociación entre las canciones bailables y una sensación de positividad.
+
+Energia y acousticness:  Se encuentran en direcciones opuestas en la dimension 1, indicando que las canciones mas energicas son menos acusticas.
+
+Valence y duration: Se encuentran en direcciones opuestas en el eje dos, lo que nos podría decir que a mayor duración de una canción es menos la sensación de positividad,
+
+### Primer eje  vs tercer eje
+
+```{r carga de datos7}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(1, 3)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(1, 3)
+)
+
+
+```
+
+
+Canciones en Vivo y Acústicas: Aunque la acústica y la vivacidad no son las más destacadas en Dim1, su moderada presencia en Dim3 sugiere que podrían estar más relacionadas con características como la presencia de público o la atmósfera de una actuación en vivo.
+
+Speechiness y Liveness (vivacidad): Se observa una proximidad entre speechiness y liveness en Dim3. Esto puede indicar que las canciones con mayor contenido hablado también pueden ser aquellas que tienen una mayor probabilidad de ser grabaciones en vivo o de contener elementos en vivo, como aplausos o interacciones con la audiencia.
+
+### Primer eje  vs cuarto eje
+
+```{r carga de datos8}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(1, 4)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(1, 4)
+)
+
+
+```
+
+Instrumentales y speechiness: Las canciones que tienen un alto grado de speechiness probablemente serán bajas en instrumentalness. Indicando que las canciones instrumentales tendrían menor cantidad de palabras habladas.
+
+Acousticness  y valence: Las canciones con alta acústica no tienden a ser las más positivas o alegres, y las canciones con alta valencia no son necesariamente acústicas. 
+
+### segundo  eje  vs tercer eje
+
+```{r carga de datos9}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(2, 3)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(2, 3)
+)
+
+
+```
+Valencia y Danceability (Bailableidad): Estas dos variables parecen estar alineadas a lo largo de la Dim3, indicando que las canciones con mayor valencia, que típicamente son más positivas y alegres, también tienden a ser más bailables. Esto sugiere que hay una asociación entre el carácter alegre de la música y su aptitud para el baile.
+
+
+Liveness (Vivacidad) y Speechiness (Hablabilidad): Estas variables, ubicadas en la parte superior del gráfico y más cerca de la Dim3, sugieren que las canciones con mayor presencia de audiencia en vivo o elementos de grabación en vivo tienden a tener más contenido hablado. 
+
+### segundo  eje  vs cuarto eje
+
+```{r carga de datos10}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(2, 4)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(2, 4)
+)
+
+
+```
+
+No se infieren cosas nuevas a las anteriores mencionadas.
+
+### tercer  eje  vs cuarto eje
+
+```{r carga de datos11}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(3, 4)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(3, 4)
+)
+
+
+```
+
+Se destaca que para la dimensión 3 es muy importante la caracteristica dada por liveness.
+
+## 2.
+Con base en las nubes de individuos y variables, describan los álbumes de esta banda. ¿Cuáles podrían ser más enérgicos, positivos, entre otras características?
+
+
+
+Para verlo vamos a tener 3 vistas, comnbinando ejes. Tendremos en cuenta la nube de individuos con las variable album como auxiliar, una nube de individuos coloreando las canciones dependiendo del album y el circulo de correlaciones.
+
+
+### Primer vs segundo eje
+
+```{r carga de datos15}
+
+# Cargar librerías necesarias para visualización
+library(FactoMineR)
+library(factoextra)
+library(ggrepel)
+library(ggplot2)
+
+# Seleccionar datos para PCA excluyendo las primeras 3 columnas
+datos_para_pca <- canciones[, -(1:3)]
+
+# Mostrar dimensiones de los datos seleccionados
+dim(datos_para_pca)
+
+# Realizar PCA con la primera columna como variable cualitativa, sin gráficos y escalando variables
+res <- PCA(datos_para_pca, quali.sup = 1, graph = FALSE, scale.unit = TRUE, ncp = 4)
+
+# Crear dataframe con coordenadas de la variable cualitativa (supuestamente álbumes) y añadir nombres de álbumes
+album_data <- as.data.frame(res$quali.sup$coord)
+album_data$album <- rownames(album_data)
+
+# Definir colores para cada álbum
+colors_for_albums <- c("red", "blue", "green", "yellow", "orange", "purple", "pink", "brown", "cyan")
+
+# Generar y mostrar gráficos PCA para combinaciones de las primeras 4 componentes, coloreando por álbum
+for(i in 1:3) {
+  for(j in (i+1):4) {
+    p <- fviz_pca_ind(res, geom.ind = "point", repel = TRUE, axes = c(i, j)) +
+      theme_minimal() +
+      geom_point(data = album_data, aes_string(x = paste0("Dim.", i), y = paste0("Dim.", j), color = "album"), size = 5) +
+      scale_color_manual(values = colors_for_albums) +
+      guides(color = guide_legend(title = "Álbum")) +
+      ggtitle(paste("PCA - Eje", i, "vs. Eje", j))
+    
+    print(p)  # Muestra el gráfico
+    # Opcional: Guardar el gráfico (comentado)
+  }
+}
+
+```
+
+```{r carga de datos16}
+
+
+library(gridExtra) # Cargar librería para manipulación de gráficos
+
+# Inicializar lista para almacenar gráficos y contador
+plots <- list()
+count <- 1
+
+# Bucle para generar gráficos de PCA para todas las combinaciones de los primeros 4 ejes
+for(i in 1:3) {
+  for(j in (i+1):4) {
+    p <- fviz_pca_ind(res,
+                      axes = c(i, j), # Especifica los ejes a visualizar
+                      geom.ind = "point", # Usa puntos para representar las observaciones
+                      habillage = 1, # Colorea por la primera variable cualitativa (ej. álbum)
+                      palette = "jco", # Estilo de colores
+                      addEllipses = FALSE, # No añadir elipses de confianza
+                      legend.title = "Álbum") + # Título de leyenda
+      theme_minimal() + # Tema minimalista para el gráfico
+      ggtitle(paste("Eje", i, "vs. Eje", j)) # Añadir título al gráfico
+    
+    # Mostrar el gráfico
+    print(p)
+    
+    # Opcional: Guardar gráfico en archivo (línea comentada, ajustar si se usa)
+    # ggsave(paste("PCA_Eje", i, "_vs_Eje", j, ".png", sep = ""), plot = p, width = 8, height = 6)
+  }
+}
+
+
+
+
+```
+
+
+
+Basándonos en la interpretación de los gráficos de individuos generados a partir del análisis PCA, donde consideramos los álbumes como variables cualitativas suplementarias, observamos una notable dispersión entre las canciones pertenecientes a los mismos álbumes. Esta inclusión de los álbumes en el análisis nos permite examinar cómo las agrupaciones de canciones por álbum se relacionan con diversas características musicales. Sin embargo, recordando los círculos de correlación analizados previamente, podemos extraer algunas conclusiones interesantes sobre la naturaleza y características de ciertos álbumes en relación con los atributos musicales evaluados:
+
+Álbum "Encuentros con otras identidades": Se percibe como energético, destacándose en el plano 2 y 1, lo que denota una fuerte presencia de canciones vibrantes, posiblemente debido a ritmos intensos o temáticas estimulantes.
+
+Álbum "Zona Temporalmente Autónoma": Su tendencia hacia la acústica se ve en los planos factoriales 1 y 2, sugiriendo una proximidad a sonidos orgánicos y posiblemente una duración extendida de las pistas, como insinúa su posición en el plano 1.3. Además, el plano 2.4 refuerza su naturaleza acústica, subrayando una producción menos electrónica y más enfocada en elementos sonoros puros.
+
+Álbum "Pop": Su alta valencia, evidente en el plano 1 y 2, indica un álbum lleno de canciones alegres y optimistas. Este carácter se confirma en el plano 2.3, donde también se destaca por su energía y positividad.
+
+Álbum "Los Planetas contra la Ley de la Gravedad": Su inclinación hacia la 'danceability' se nota en los planos 1 y 2, sugerente de ritmos que invitan al movimiento. Además, la presencia de elementos instrumentales se sugiere en el plano 1.4, mientras que los planos 2.3 y 2.4 lo perfilan como un álbum con una mezcla de alta 'danceability' y valencia, y el plano 3.4 destaca su componente instrumental.
+
+Álbum "Unidad de Desplazamiento" y "La leyenda del espacio" muestran similitudes en liveness, especialmente en el plano 1.3, indicando una presencia palpable de energía en vivo. El plano 2.3 adicionalmente sugiere que "La leyenda del espacio" comparte esta característica, con matices de 'speechiness'.
+
+Álbum "Super 8" parece distinguirse por la duración de sus pistas, como lo indica su posición en el plano 2.3, insinuando que podría contener canciones más largas de lo habitual.
+
+Álbumes "Una semana en el motor de un autobús" y "Una Opera egipcia" se caracterizan por su diversidad, sugiriendo una amplia gama de estilos y sonidos, lo que podría reflejarse en una variabilidad considerable en sus atributos musicales a través de los distintos planos factoriales.
+
+
+
+## 3. 
+Explique el funcionamiento de los ejes de variables. ¿Qué separa el primer y el segundo eje?
+
+Para comprender el papel de cada eje en un Análisis de Componentes Principales (PCA), es esencial revisar las tablas resumen que muestran las coordenadas de las variables, sus contribuciones y la calidad de representación (cos²) en los ejes. Estos elementos son cruciales para discernir qué atributos musicales son los más relevantes en cada componente principal y cómo contribuyen a la variabilidad general de los datos.
+e.
+
+```{r carga de datos12}
+
+# Cargar el paquete corrplot para visualización de matrices de correlación
+library(corrplot)
+
+# Extraer información de las variables del resultado PCA
+var <- get_pca_var(pca_result)
+
+# Mostrar las coordenadas de las variables en los componentes principales
+head(var$coord)
+
+# Mostrar cos2 para entender la calidad de representación de las variables en el mapa de factores
+head(var$cos2)
+
+# Mostrar contribuciones de las variables a los componentes principales
+head(var$contrib)
+
+# Visualizar el cos2 de las variables usando corrplot, no interpretar como correlaciones
+corrplot(var$cos2, is.corr=FALSE)
+
+```
+
+
+El primer eje, o Dimensión 1, se caracteriza por la preponderancia de la energía (energy), que presenta la mayor carga positiva en este eje. Le siguen la valencia (valence) y el tempo (tempo), lo que sugiere que este eje captura primordialmente la energía de las canciones, complementada significativamente por su positividad y ritmo. Este eje distingue, por tanto, las canciones con un carácter más enérgico y estimulante de aquellas con un tono más lento y sosegado.
+
+El segundo eje, o Dimensión 2, se define por la alta carga negativa de la danzabilidad (danceability) y la carga positiva de la duración (duration), con la valencia (valence) también mostrando una carga notable aunque negativa. Este eje parece diferenciar las canciones más propensas al baile, que suelen ser más cortas y alegres, de aquellas que son más largas y, posiblemente, menos optimistas.
+
+El tercer y cuarto eje, aunque capturan menos variabilidad y son típicamente de menor interpretación en PCA, también aportan sus matices distintivos. La duración vuelve a destacarse en el tercer eje con una carga alta negativa, lo que podría implicar un enfoque en aspectos estructurales de las canciones no capturados por los dos primeros ejes. En cuanto al cuarto eje,
+
+la acústica (acousticness) se manifiesta con la carga más alta en sentido negativo, lo que podría reflejar una distinción entre las canciones con elementos acústicos frente a aquellas con una producción más electrónica o procesada.
+
+El corrplot proporcionado ilustra el cuadrado del coseno (cos²) de cada variable en cada eje, indicando cuán bien cada atributo musical está representado por cada componente principal. En el primer eje, la energía destaca como la mejor representada, afirmando que este eje es un indicador fiable del nivel de energía en las canciones. Por su parte, el segundo eje resalta la danzabilidad como el atributo más representativo, sugiriendo que este eje refleja primordialmente la aptitud de las canciones para el bail
+
+
+## 4. 
+¿La proyección es suficientemente buena para poder interpretar los datos para todas las variables? Justifique su respuesta
+
+
+
+Para determinar si la proyección de un Análisis de Componentes Principales (PCA) es suficiente para interpretar los datos, se debe evaluar la calidad de la representación de cada variable en los componentes principales, lo cual se refleja en los valores de cos². El cos² indica la proporción de la varianza de la variable que es capturada por cada dimensión del PCA. En general, un valor de cos² cercano a 1 significa que la variable está muy bien representada en esa dimensión, mientras que un valor cercano a 0 indica una representación pobre.
+
+```{r carga de datos22}
+
+# Extraer información de las variables del resultado del PCA
+var <- get_pca_var(pca_result)
+
+# Inspeccionar la estructura de 'var' para ver qué contiene
+var
+
+# Mostrar los primeros valores de cos2 para evaluar la calidad de representación de cada variable
+head(var$cos2)
+
+```
+Energía (energy): Tiene un cos² de 0.788 en la Dimensión 1, lo que indica que esta variable está muy bien representada en el primer componente. Es decir, la Dimensión 1 es un fuerte indicador del nivel de energía en las canciones.
+
+Danzabilidad (danceability): Con un cos² de 0.685 en la Dimensión 2, la danzabilidad está bien representada en el segundo componente, lo que significa que la Dimensión 2 es un buen reflejo de la aptitud de las canciones para el baile.
+
+Acústica (acousticness): Tiene un cos² relativamente alto de 0.425 en la Dimensión 1, y también una representación significativa en la Dimensión 4 con un cos² de 0.217. Esto sugiere que la Dimensión 1 captura una parte importante de la acústica, pero para una interpretación completa, se debería considerar también la Dimensión 4.
+
+Para las demás variables como duración (duration), tempo, y valencia (valence), aunque tienen representaciones significativas en varias dimensiones, no hay una dimensión donde su cos² sea extremadamente alto, lo que sugiere que ninguna dimensión por sí sola las captura completamente.
 
 
