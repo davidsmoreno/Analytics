@@ -1,0 +1,1181 @@
+---
+title: "Tarea 1 Mineria de Datos"
+author: "David Romero, Luisa De La Horita,David Moreno"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: cosmo
+    highlight: tango
+---
+
+### Universidad de los Andes Minería de Datos – MIIA 4200 
+
+Profesor: Rafael Amaya Gómez 
+ 
+```{r,echo=FALSE}
+#setwd("C:/Users/David/Documents/Analytics/Semester 2/Mineria de Datos/Tarea 1/Tarea 1_David Romero_Luisa De La Horita_David Moreno")
+
+```
+Utiliza el setwd con el path de tú computador.
+
+
+```{r,echo=FALSE}
+library(dplyr)     
+library(ggplot2)    
+library(tidyr)      
+library(readr)      
+library(readxl)     
+library(psych)      
+library(zoo)        
+library(corrplot)   
+library(lubridate)  
+library(gridExtra)
+library(FactoMineR)
+library(factoextra)
+
+
+```
+
+
+
+
+# Punto 1
+Primero, vamos a unir las bases de datos, identificando y eliminando duplicados basados en las fechas para conservar únicamente el primer registro. Luego, aplicaremos una técnica de imputación (asignación o eliminación) para manejar los datos faltantes.
+
+```{r, warning=FALSE}
+# Leemos datos meteorológicos (WeatherData_1.xlsx) y almacenarlos en el dataframe 'weather'
+weather <- read_excel("WeatherData_1.xlsx", skip = 1, col_names = c("Date", "Rainfall depth (mm)", "Air temperature (°C)", "Air humidity (%)", "Windspeed (km/h)"))
+
+# Leer datos de caudal (InflowData_1.xlsx) y almacenarlos en el dataframe 'inflow'
+inflow <- read_excel("InflowData_1.xlsx", skip = 1, col_names = c("Date", "DMA A", "DMA B", "DMA C", "DMA D", "DMA E", "DMA F", "DMA G", "DMA H", "DMA I", "DMA J"))
+
+# Convertir la columna Date al formato POSIXct (fecha y hora) en ambos dataframes
+weather$Date <- as.POSIXct(weather$Date, format = "%d/%m/%Y %H:%M")
+inflow$Date <- as.POSIXct(inflow$Date, format = "%d/%m/%Y %H:%M")
+
+# Combinar los dataframes de caudal e datos meteorológicos por la columna "Date", conservando todas las filas de caudal
+df_data <- merge(inflow, weather, by = "Date", all.x = TRUE)
+
+# Eliminar filas duplicadas basadas en la columna "Date", manteniendo solo la primera ocurrencia
+df_data <- df_data[!duplicated(df_data$Date, fromLast = TRUE), ]
+
+
+```
+
+Primero, procedemos a leer los dos conjuntos de datos y renombrar las columnas con nombres descriptivos. Para facilitar la unión de los conjuntos, utilizaremos "Date" como nombre común para la columna que representa la fecha.
+
+Luego, convertiremos la columna "Date" al formato POSIXct para asegurarnos de que esté en el formato correcto, que es día/mes/año/hora/minuto.
+
+Posteriormente, creamos la variable df_data y unimos las dos bases de datos mediante un left join de la base de datos "Inflow" con la base "weather".
+
+### Procesamiento de los datos
+
+```{r}
+str(df_data)
+```
+Aqui vemos que los tipos de datos de las las columnas son númericos y de tipo chr que es string, acá vemos un problema y es que esta tomando el string "#N/A" no como vacio sino como string, las demás variables de DMA deberian ser númericas para esto vamos a hacer una tranformación a los datos 
+
+
+
+```{r}
+df_data <- df_data %>%
+  mutate(
+    # Primera operación: Manejar columnas de tipo caracter
+    across(where(is.character), ~ {
+      # Reemplaza "#N/A" con NA, luego extrae números y convierte a numérico
+      as.numeric(gsub("[^0-9.]+", "", ifelse(. == "#N/A", NA, .)))
+    }),
+    # Segunda operación: Convertir columnas DMA a enteros
+    across(c(`DMA A`, `DMA B`, `DMA C`, `DMA D`, `DMA E`, `DMA F`, `DMA G`, `DMA H`, `DMA I`, `DMA J`), as.integer)
+  )
+
+str(df_data)
+
+```
+
+Aqui hacemos un pipeline indicando que remplace todos los strings de la forma "#NA" con NA de variable descriptiva en r, luego extraiga los numeros y los combierta a numerico, y luego convertimos toda las columnas en enteros.
+
+### Tecnica de imputacion
+
+Para este ejericio vamos a ver la cantidad de Na que tenemos en cada columns para ver que método utilizamos
+
+```{r}
+# Calcular las proporciones de valores faltantes (NA) para cada columna
+na_proportions <- colMeans(is.na(df_data))
+
+na_summary <- data.frame(
+  Column = names(na_proportions),  
+  NA_Proportion = na_proportions    
+)
+
+na_summary <- na_summary %>%
+  arrange(desc(NA_Proportion))
+
+print(na_summary)
+
+```
+
+Observamos que el porcentaje más alto de valores vacíos es del 0.13%(DMA F), seguido por el 0.11%(DMA I) y el 0.10% de la columna DMA G, donde la cantidad de valores vacíos es más pronunciada. Para llevar a cabo esta actividad, procederemos a eliminar estos valores. Posteriormente, imputaremos los valores faltantes.
+```{r }
+
+#Primer analisis eliminar NA
+df_data_1<-na.omit(df_data)
+
+```
+
+### Histogramas de las columnas
+
+
+```{r, fig.width=12, fig.height=10}
+#tomamos las variables númericas
+numeric_cols <- sapply(df_data_1, is.numeric)
+
+# Configurar la ventana de trazado para mostrar varios gráficos basados en el número de columnas numéricas
+par(mfrow=c(ceiling(sqrt(sum(numeric_cols))), ceiling(sqrt(sum(numeric_cols)))))
+
+# Recorrer cada columna numérica para crear un histograma
+for(col in names(df_data_1)[numeric_cols]) {
+  hist(df_data_1[[col]], main = paste("Histograma de", col),
+       xlab = col, ylab = "Frecuencia")
+}
+
+# Restablecer la ventana de trazado a su valor predeterminado
+par(mfrow=c(1, 1))
+
+
+```
+Aquí generamos un gráfico para visualizar las distribuciones de nuestras columnas y entender mejor la naturaleza de los datos de cada variable. Observamos que la variable "Rainfall depth" muestra una alta concentración de valores en cero, lo que sugiere que la información disponible para esta variable es limitada
+
+Además, al analizar los datos en general, identificamos posibles valores atípicos ("outliers") (Para el Bono) en la columna DMA A, particularmente para valores mayores a 15. 
+
+
+
+## Punto 1.2
+Se desea identificar si se tiene un patrón dentro de las series de tiempo, para esto se debe usar la técnica de media móvil variando la ventada de tiempo que se usa para cada corrida. Se le indica que debe usar 5 ventanas de tiempo diferentes para compara los resultados y asi poder conluir sobre el patrón en cada serie de tiempo.
+
+
+### Media Movil
+
+Vamos a calcular la media movil para 5 periodos de tiempo diferentes, vamos a  hacerlo por horas, por meses, con ventanas de tiempo de 1 mes, 2 meses y 5 meses
+
+#### Análisis de corrrelación
+
+Primero vamos a hacer un análisis de correlación para ver que variables tienen una realción más fuerte y, por tanto, podrían ser más relevnates para un análisis más detallado, 
+
+
+```{r, fig.width=10, fig.height=8}
+
+numeric_cols <- sapply(df_data_1, is.numeric)
+
+numeric_df <- df_data_1[, numeric_cols]
+
+# Calcula la matriz de correlación para las columnas numéricas
+correlation_matrix <- cor(numeric_df, use = "complete.obs")
+
+# Visualiza la matriz de correlación utilizando corrplot
+corrplot(correlation_matrix, 
+         method = "color", 
+         type = "upper", 
+         order = "hclust",
+         tl.col = "black", 
+         tl.srt = 45, 
+         addCoef.col = "black", 
+         col = colorRampPalette(c("#6D9EC1", "white", "#E46726"))(200), 
+         diag = FALSE)
+
+```
+
+
+Aqui en la gráfica vemos algo interesante, xiste una correlación positiva fuerte entre algunas de las variables DMA (por ejemplo, DMA F con DMA D, DMA H con DMA A y DMA E, etc.). Esto sugiere que hay una relación lineal directa entre estos pares de variables: cuando una aumenta, la otra también tiende a aumentar.
+La temperatura del aire (Air temperature (°C)) también tiene correlaciones positivas fuertes con varias variables DMA, lo que podría indicar que el consumo de agua o la demanda en estas zonas está influenciada por la temperatura.
+
+
+Correlaciones Negativas:
+
+La velocidad del viento (Windspeed (km/h)) presenta una correlación negativa con la humedad del aire (Air humidity (%)). Esto sugiere que, en general, a medida que aumenta la velocidad del viento, disminuye la humedad en el aire.
+
+
+
+```{r}
+# Convertimos la columna 'Date' a formato POSIXct (fecha y hora) utilizando el formato especificado
+df_data_1$Date <- as.POSIXct(df_data_1$Date, format="%d/%m/%Y %H:%M")
+
+# Extraemos la hora del día de la columna 'Date' y la almacenamos en una nueva columna 'Hour'
+df_data_1$Hour <- hour(df_data_1$Date)
+
+# Calculamos los promedios por hora para la columna 'DMA A', agrupando por la hora del día
+hourly_averages <- df_data_1 %>%
+  group_by(Hour) %>%
+  summarise(Average_DMA_A = mean(`DMA A`, na.rm = TRUE))
+
+# Creamos un gráfico utilizando ggplot2
+ggplot(hourly_averages, aes(x = Hour, y = Average_DMA_A)) +  # Establecemos los ejes x e y y los datos a utilizar
+  geom_line() +  # Agregamos una línea que conecta los puntos medios
+  geom_point() +  # Agregamos puntos que representan los promedios reales por hora
+  labs(title = "Media Móvil por Hora para DMA A", x = "Hora del Día", y = "Media de DMA A") +  # Añadimos etiquetas al gráfico
+  scale_x_continuous(breaks = 0:23) +  # Aseguramos que el eje x tenga las 24 horas
+  theme_minimal()  # Aplicamos un tema minimalista al gráfico
+
+
+```
+Para esta gráfica vemos algo interesante: Para esta gráfica, observamos un patrón intrigante: DMA A comienza a incrementar a partir de las 6 de la mañana, alcanzando su punto máximo a las 9 de la mañana. Posteriormente, experimenta un ligero descenso hasta las 12 de la noche, momento en el cual disminuye de manera más notable. Este comportamiento se mantiene de manera constante a lo largo de las horas, lo cual sugiere un posible vínculo con la temperatura ambiental. Dado que durante las horas del día la presencia del sol es más intensa, esto podría incrementar la demanda de agua
+
+
+
+```{r,fig.width=10, fig.height=8}
+
+# agregando columnas para el año, el mes y el año y mes combinados (YearMonth)
+df_data_3 <- df_data_1 %>%
+  mutate(Year = year(Date),               # Extraemos el año de la columna Date
+         Month = month(Date),             # Extraemos el mes de la columna Date
+         YearMonth = as.yearmon(Date))   # Creamos una columna YearMonth que contiene la fecha en formato yearmon
+
+# Agrupamos por año y mes para calcular el promedio mensual de DMA A
+monthly_avg <- df_data_3 %>%
+  group_by(YearMonth) %>%
+  summarise(MonthlyAvg_DMA_A = mean(`DMA A`, na.rm = TRUE))
+
+# Calculamos el promedio móvil de un mes para los promedios mensuales de DMA A
+monthly_avg$MovingAvg_1M <- rollapply(monthly_avg$MonthlyAvg_DMA_A, width = 1, FUN = mean, by.column = TRUE, fill = NA, align = 'right')
+
+# Visualización con ggplot2
+ggplot(monthly_avg, aes(x = YearMonth, y = MovingAvg_1M)) +  # Establecemos los ejes x e y y los datos a utilizar
+  geom_line() +  # Agregamos una línea que conecta los puntos
+  geom_point() +  # Agregamos puntos para representar los promedios móviles
+  labs(title = "Promedio Móvil de 1 Mes del Promedio Mensual DMA A",
+       x = "Año y Mes",
+       y = "Promedio Móvil de 1 Mes") +  # Añadimos etiquetas al gráfico
+  scale_x_yearmon(breaks = seq(min(monthly_avg$YearMonth), max(monthly_avg$YearMonth), by = 0.1)) +  # Establecemos los intervalos de los ticks en el eje x
+  theme_minimal()  # Aplicamos un tema minimalista al gráfico
+
+```
+
+Aqui también vemos algo interesante y es que existe una mayor demanda de agua en DMA A durante las épocas más cálidas del año. Se registra un aumento en el consumo desde febrero hasta agosto, destacándose julio y agosto como los periodos con los niveles más altos de demanda. Este mismo patrón se repite también para el año 2022, lo que sugiere una correlación entre las estaciones climáticas y el consumo de agua.
+
+```{r,warning=FALSE}
+# Creamos un nuevo dataframe df_data_2 a partir de df_data_1, 
+# agregando una columna YearMonth que contiene el año y el mes en formato "YYYY-MM",
+# luego agrupamos por YearMonth y calculamos el promedio mensual de DMA A
+df_data_2 <- df_data_1 %>%
+  mutate(YearMonth = format(Date, "%Y-%m")) %>%  # Agregamos una columna YearMonth con el año y mes en formato "YYYY-MM"
+  group_by(YearMonth) %>%
+  summarise(Monthly_Avg_DMA_A = mean(`DMA A`, na.rm = TRUE)) %>%
+  ungroup()  # Eliminamos el agrupamiento para evitar problemas en las siguientes operaciones
+
+# Calculamos las medias móviles para cada uno de los periodos solicitados (1, 5, 10 y 24 meses)
+# Cambiamos los nombres de las columnas de medias móviles
+df_data_2$MA_1 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 1, FUN = mean, fill = NA, align = 'right')
+df_data_2$MA_5 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 2, FUN = mean, fill = NA, align = 'right')
+df_data_2$MA_10 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 5, FUN = mean, fill = NA, align = 'right')
+df_data_2$MA_24 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 10, FUN = mean, fill = NA, align = 'right')
+
+# Convertimos YearMonth de nuevo a un objeto de fecha para la visualización
+df_data_2$YearMonth <- as.Date(paste0(df_data_2$YearMonth, "-01"))
+
+# Creamos los gráficos
+p1 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_1)) +
+  geom_line() +
+  ggtitle("Promedio Móvil de 1 Mes de DMA A")
+
+p5 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_5)) +
+  geom_line(color = "blue") +
+  ggtitle("Promedio Móvil de 5 Meses de DMA A")
+
+p10 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_10)) +
+  geom_line(color = "red") +
+  ggtitle("Promedio Móvil de 10 Meses de DMA A")
+
+p24 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_24)) +
+  geom_line(color = "green") +
+  ggtitle("Promedio Móvil de 24 Meses de DMA A")
+
+# Mostramos los gráficos
+library(gridExtra)
+grid.arrange(p1, p5, p10, p24, ncol = 2)  # Organizamos los gráficos en una cuadrícula de 2 columnas
+
+```
+
+
+
+
+## Punto 1.3
+Asimimso, se el pide que busque variables que tengan una relación con el consumo de cada una de las áreas mostradas en la tabla 1.
+
+
+
+- Correlación con la temperatura: Las zonas DMA presentan una correlación positiva entre 0.51 y 0.58 con la temperatura del aire, lo que indica que el consumo de agua aumenta con la temperatura, especialmente en épocas calurosas.
+
+- Influencia de la velocidad del viento y la lluvia: La velocidad del viento tiene poco impacto en el consumo de agua en las zonas DMA, con correlaciones cercanas a cero. Sin embargo, la lluvia muestra una leve correlación positiva en DMA C, sugiriendo un aumento en el consumo de agua durante días lluviosos, posiblemente por la recolección de agua pluvial.
+
+
+## Bono
+El dataset inclute posible outliers. Identifique, elimine y compare los resultados obtenidos.
+
+
+### Metrica para calcular el K utilizando Kmeans
+
+Para esto utilizamos una gráfica Within-Cluster Sum of Squares WSS y probamos para 10 valores de K, en este caso tenemos la siguiente gráfica.
+
+
+```{r}
+
+numeric_data <- df_data_1[, sapply(df_data_1, is.numeric)]
+
+# Definir el número máximo de clusters a considerar
+k.max <- 10
+
+# Inicializar un vector para almacenar la suma total de cuadrados dentro de los clusters (WSS)
+wss <- numeric(k.max)
+
+# Calcular WSS (Within-Cluster Sum of Squares) para cada valor de k
+for (k in 1:k.max) {
+  wss[k] <- sum(kmeans(numeric_data, centers = k, nstart = 20)$withinss)
+}
+
+# Crear un dataframe con los valores de k y WSS
+k_values <- 1:k.max
+ggplot(data.frame(k = k_values, WSS = wss), aes(x = k, y = WSS)) +
+  geom_point() +  # Agregar puntos para mostrar los valores de WSS
+  geom_line() +   # Conectar los puntos para una mejor visualización
+  labs(title = "Método del Codo para Elegir k",
+       x = "Número de clusters k",
+       y = "Suma total de cuadrados dentro de los clusters") +  # Etiquetas de los ejes
+  theme_minimal()  # Aplicar un tema minimalista al gráfico
+
+
+```
+
+Observamos que el valor de la suma total de cuadrados dentro de los clusters (WSS) es relativamente bajo. Se observa que, aunque el valor marginal de cada iteración tiende a mejorar el WSS, este incremento es mínimo. Por consiguiente, consideramos que utilizar 10 clusters es una elección apropiada para este análisis. Añadir más clusters probablemente incrementaría el valor de WSS, pero para los propósitos de este análisis, parece adecuado trabajar con 10 clusters.
+
+### K elegido
+
+```{r}
+numeric_df <- df_data_1 %>%
+  select_if(is.numeric)
+
+# Realizamos PCA (Análisis de Componentes Principales) en los datos numéricos
+pca_result <- prcomp(numeric_df, scale. = TRUE)
+
+# Convertimos los resultados de PCA en un dataframe
+pca_df <- as.data.frame(pca_result$x)
+
+# Definimos el número de clusters para el algoritmo K-means
+k <- 10
+
+# Aplicamos el algoritmo K-means en las dos primeras componentes principales (PC1 y PC2)
+km_res <- kmeans(pca_df[, c("PC1", "PC2")], centers = k, nstart = 25)
+
+# Añadimos las asignaciones de cluster al dataframe resultante de PCA
+pca_df$cluster <- as.factor(km_res$cluster)
+
+# Creamos un gráfico utilizando ggplot2
+ggplot(pca_df, aes(x = PC1, y = PC2, color = cluster)) +  # Definimos las variables x, y y color
+  geom_point(alpha = 0.9) +  # Usamos alpha para ajustar la opacidad de los puntos, mejorando la legibilidad del gráfico
+  scale_color_brewer(palette = "Set3") +  # Usamos una paleta de colores distintiva para mayor claridad
+  labs(title = "Clustering K-means con k=10 en Componentes PCA 1 y 2",
+       x = "Componente Principal 1 (PC1)",
+       y = "Componente Principal 2 (PC2)",
+       color = "Cluster") +  # Establecemos el título de la leyenda correctamente
+  theme_minimal()  # Utilizamos un tema minimalista para un aspecto más limpio
+
+print(summary(pca_result)$importance[2, 1:2])
+
+
+```
+En nuestro conjunto de datos, los dos primeros componentes principales explican el 60.401% de la varianza, lo cual es excelente. Esto indica que, al considerar únicamente dos variables, capturamos una porción significativa de la información contenida en nuestros datos. Para visualizar cómo estos componentes se relacionan con la estructura de los datos, creamos un gráfico de dispersión de los componentes principales (PCA). Al observar el gráfico, notamos que nuestros 10 clusters se ajustan de manera adecuada a los datos, lo que nos proporciona una comprensión sólida de la distribución de los datos en el espacio de las dos primeras componentes principales. Este análisis nos permitirá identificar y eliminar los valores atípicos de manera efectiva, abordando cada cluster individualmente.
+
+```{r}
+centroids <- aggregate(cbind(PC1, PC2) ~ cluster, data = pca_df, FUN = mean)
+
+# Unimos los centroides de nuevo al dataframe original para calcular las distancias
+pca_df_with_centroids <- merge(pca_df, centroids, by = "cluster", suffixes = c("", "_centroid"))
+
+# Calculamos la distancia euclidiana desde cada punto hasta su centroide de cluster
+pca_df_with_centroids$distance <- sqrt((pca_df_with_centroids$PC1 - pca_df_with_centroids$PC1_centroid)^2 + 
+                                       (pca_df_with_centroids$PC2 - pca_df_with_centroids$PC2_centroid)^2)
+
+# Definimos el criterio para los valores atípicos. Distancias mayores a 1.5 desviaciones estándar de la distancia media para cada cluster
+pca_df_with_centroids <- pca_df_with_centroids %>%
+  group_by(cluster) %>%
+  mutate(mean_distance = mean(distance), sd_distance = sd(distance)) %>%
+  ungroup() %>%
+  mutate(outlier = ifelse(distance > mean_distance + 1.5*sd_distance, TRUE, FALSE))
+
+# Filtramos los valores atípicos
+df_no_outliers <- filter(pca_df_with_centroids, outlier == FALSE)
+
+
+```
+
+Tras identificar nuestros clusters, procedemos a calcular los centroides de cada uno para determinar qué valores se desvían significativamente dentro de cada grupo. Utilizamos un criterio de 1.5 desviaciones estándar alrededor del centroide de cada cluster para identificar y excluir los outliers de nuestro análisis. Esto nos permite depurar nuestro conjunto de datos, eliminando elementos atípicos que podrían distorsionar los resultados. Como resultado, generamos un nuevo dataframe, denominado df_no_outliers.
+
+### Resultdos Sin Outliers
+
+
+Ahora vamos a hacer el análisis sin outliers, primero veamos la cantidad de Outliers que quitamos de nuestros datos.
+
+
+```{r}
+# Obtener las dimensiones del dataframe original y del dataframe sin valores atípicos
+dimensions_df <- dim(df_data_1)
+dimensions_no_outliers <- dim(df_no_outliers)
+
+# Calcular la diferencia en dimensiones entre ambos dataframes
+difference <- dimensions_df - dimensions_no_outliers
+
+# Imprimir las dimensiones y la diferencia en una sola declaración
+cat("Dimensiones de df_data_1:", paste(dimensions_df, collapse = "x"), "\n",
+    "Dimensiones de df_no_outliers:", paste(dimensions_no_outliers, collapse = "x"), "\n",
+    "Diferencia (valores atípicos eliminados):", paste(difference, collapse = "x"), "\n")
+
+```
+
+Observamos que se han eliminado 613 valores atípicos de nuestros datos. De los 9500 datos originales, aproximadamente el 6.45% (613 valores atípicos) han sido eliminados. Es importante tener en cuenta que, al analizar específicamente la columna DMA A, se observa que la eliminación de valores atípicos parece estar sesgada hacia datos por encima del valor 15, como se evidenció en el histograma previamente analizado.
+
+```{r}
+# Plot PCA with outliers highlighted
+ggplot(pca_df_with_centroids, aes(x = PC1, y = PC2, color = outlier)) +
+  geom_point() +
+  scale_color_manual(values = c("blue", "red"), labels = c("Not Outlier", "Outlier")) +
+  labs(title = "PCA Plot with Outliers Highlighted",
+       x = "Principal Component 1",
+       y = "Principal Component 2",
+       color = "Outlier Status") +
+  theme_minimal()
+```
+
+Aquí se muestran los valores atípicos que hemos eliminado de nuestros datos. Observamos que estos valores atípicos representan prácticamente las fronteras de cada cluster identificadas anteriormente, es decir, las partes más alejadas de sus respectivos centros. En este caso, hemos utilizado un criterio de eliminación que considera valores que están aproximadamente a más de 1.5 desviaciones estándar de la media.
+
+```{r}
+data_2 <- df_data_1[, c('Date', 'DMA A', 'DMA B', 'DMA C', 'DMA D', 'DMA E', 'DMA F', 'DMA G', 'DMA H', 'DMA I', 'DMA J',
+                        'Rainfall depth (mm)', 'Air temperature (°C)', 'Air humidity (%)', 'Windspeed (km/h)')]
+
+# Convierte los índices de las filas seleccionadas sin valores atípicos a numéricos
+row_indices <- as.numeric(rownames(df_no_outliers))
+
+# Utilizamos los indices para seleccionar las mismas filas del dataframe original
+df_no_outliers <- data_2[row_indices, ]
+
+```
+
+
+```{r}
+df_no_outliers$Date <- as.POSIXct(df_no_outliers$Date, format="%d/%m/%Y %H:%M")
+
+# Extraemos la hora del día de la columna 'Date'
+df_no_outliers$Hour <- hour(df_no_outliers$Date)
+
+# Calculamos el promedio por hora de la columna 'DMA A'
+hourly_averages <- df_no_outliers %>%
+  group_by(Hour) %>%
+  summarise(Average_DMA_A = mean(`DMA A`, na.rm = TRUE))
+
+# Creamos el gráfico utilizando ggplot2
+ggplot(hourly_averages, aes(x = Hour, y = Average_DMA_A)) +
+  geom_line() +  # Línea que conecta los puntos medios
+  geom_point() +  # Puntos que representan los promedios reales por hora
+  labs(title = "Media Móvil por Hora para DMA A", x = "Hora del Día", y = "Media de DMA A") +
+  scale_x_continuous(breaks = 0:23) +  # Aseguramos que el eje x tenga las 24 horas
+  theme_minimal()  # Tema minimalista para el gráfico
+
+```
+Observamos que en la gráfica de horas, la visualización es un poco más clara, pero en general, no se observan diferencias muy notables con los datos sin outliers. La media no parece verse afectada significativamente en este caso.
+```{r}
+
+# Agregamos la columna YearMonth, que contiene el año y el mes de la fecha en formato "%Y-%m"
+# Calculamos el promedio mensual de DMA A para cada YearMonth
+# Finalmente, desagrupamos el dataframe resultante
+df_data_2 <- df_no_outliers %>%
+  mutate(YearMonth = format(Date, "%Y-%m")) %>%
+  group_by(YearMonth) %>%
+  summarise(Monthly_Avg_DMA_A = mean(`DMA A`, na.rm = TRUE)) %>%
+  ungroup()
+
+# Calculamos las medias móviles para cada uno de los periodos solicitados (1, 5, 10 y 24 meses)
+# Cambiamos los nombres de las columnas de medias móviles
+df_data_2$MA_1 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 1, FUN = mean, fill = NA, align = 'right')
+df_data_2$MA_5 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 2, FUN = mean, fill = NA, align = 'right')
+df_data_2$MA_10 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 5, FUN = mean, fill = NA, align = 'right')
+df_data_2$MA_24 <- rollapply(df_data_2$Monthly_Avg_DMA_A, width = 10, FUN = mean, fill = NA, align = 'right')
+
+# Convertimos la columna YearMonth de vuelta a un objeto de fecha para su visualización
+df_data_2$YearMonth <- as.Date(paste0(df_data_2$YearMonth, "-01"))
+
+# Creamos los gráficos para cada una de las medias móviles (1, 5, 10 y 24 meses)
+p1 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_1)) +
+  geom_line() +
+  ggtitle("Media Móvil de 1 Mes de DMA A")
+
+p5 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_5)) +
+  geom_line(color = "blue") +
+  ggtitle("Media Móvil de 5 Meses de DMA A")
+
+p10 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_10)) +
+  geom_line(color = "red") +
+  ggtitle("Media Móvil de 10 Meses de DMA A")
+
+p24 <- ggplot(df_data_2, aes(x = YearMonth, y = MA_24)) +
+  geom_line(color = "green") +
+  ggtitle("Media Móvil de 24 Meses de DMA A")
+
+# Mostramos los gráficos en una disposición de cuadrícula
+library(gridExtra)
+grid.arrange(p1, p5, p10, p24, ncol = 2)
+
+```
+
+Cuando observamos las gráficas de los intervalos de medias móviles para DMA A después de eliminar los outliers, no vemos una diferencia significativa. Esto podría sugerir que los outliers no estaban ejerciendo una influencia significativa en la tendencia general de los datos. Sin embargo, sería valioso explorar esta hipótesis también para columnas con outliers más pronunciados, ya que podrían tener un impacto más significativo en los resultados.
+
+#  Punto
+
+Spotify es una empresa para la reproducción de música vía streaming que se ha venido consolidando como una de las plataformas más relevantes a nivel mundial. Considere que usted se ha conectado con la API de Spotify y ha podido descargar la información de la banda “Los Planetas”, una banda española de indie rock que ha estado activa desde 1993 Dentro de la información disponible descargada se encuentra nombres de canciones, nombres de los álbumes, duración o tempo. Adicionalmente, tiene unos descriptores en términos a qué tan positiva, bailable, enérgica, acústica, instrumental o en vivo fue cada canción. Con base en esta base de datos, se le pide lo siguiente:
+
+## 1.
+Realice un análisis de PCA que permita describir el tipo de canciones. Por ejemplo, ¿Cómo se relaciona las canciones bailables con las de tipo instrumental? ¿Las canciones con larga duración con las enérgicas? ¿Las canciones en vivo con las acústicas?
+
+Primero carga y descriptivo de que trae la base de datos
+
+```{r carga de datos}
+# Establece el directorio de trabajo
+#setwd("C:/Users/O004607/Documents/Maestria/SegundoSemestre/MineriaDatos/Clase4/")
+
+# Carga el archivo de datos 'canciones.RData'
+load("canciones.RData")
+
+# Muestra las primeras filas de 'canciones'
+head(canciones)
+
+```
+Observando el head de los datos vemos que
+
+id: Identificador único de la canción.
+
+name: Nombre de la canción.
+
+album_id: Identificador único del álbum al que pertenece la canción.
+
+album: Nombre del álbum.
+
+duration: Duración de la canción en segundos.
+
+tempo: Tempo de la canción en golpes por minuto (BPM).
+
+valence: Una medida de la positividad musical, que describe la musicalidad de las canciones en términos de ser más positivas o alegres.
+
+danceability: Una medida de cuán adecuada es una canción para bailar basada en una combinación de elementos musicales incluyendo el tempo, estabilidad del ritmo, fuerza del beat, y regularidad general.
+
+energy: Una medida que representa la intensidad y actividad percibida de una canción.
+
+acousticness: Una medida que indica cuán acústica es una canción.
+
+instrumentalness: Una medida que indica qué tan instrumental es una canción.
+
+liveness: Detecta la presencia de una audiencia en la grabación. Altos valores para este atributo indican que la canción fue realizada en vivo.
+
+speechiness: Detecta la presencia de palabras habladas en una canción. Un valor más alto significa que la canción contiene más palabras habladas.
+
+
+```{r carga de datos2}
+# Obtiene y muestra las dimensiones de 'canciones' (filas, columnas)
+dim(canciones)
+```
+El archivo contiene datos con 109 filas y 13 columnas. Hay información sobre 109 canciones, cada una descrita por 13 atributos.
+
+```{r carga de datos3}
+# Muestra un resumen estadístico de 'canciones'
+
+summary(canciones)
+```
+se puede inferir para cada variable que
+
+Duration: Las canciones tienen una duración que varía considerablemente, con un rango de 88.4 a 621.7 segundos.
+
+Tempo: El tempo fluctúa entre 59.7 y 215.1 BPM, mostrando una amplia gama de ritmos.
+
+Valence (Positivity): Con valores de 4.70 a 96.70, la valencia muestra que las canciones abarcan un espectro emocional amplio, 
+
+Danceability: La bailableidad varía de 6.80 a 75.00, algunas canciones son más adecuadas para bailar que otras.
+
+Energy: Los niveles de energía oscilan entre 21.90 y 97.20, la banda produce tanto música tranquila como pistas llenas de vigor.
+
+Acousticness: La acústica tiene un rango de 0.0 a 78.7.
+
+Instrumentalness: Con valores de 0 a 92.70..
+
+Liveness: La vivacidad varía de 4.90 a 91.20.
+
+Speechiness: La hablabilidad tiene un rango de 2.7 a 9.0.
+
+
+```{r carga de datos4}
+# Cargar paquetes necesarios para PCA y visualización
+library(FactoMineR)
+library(factoextra)
+
+# Seleccionar variables numéricas de 'canciones' para el análisis PCA
+datos_pca <- canciones[, c("duration", "tempo", "valence", "danceability", "energy", "acousticness", "instrumentalness", "liveness", "speechiness")]
+
+# Ejecutar PCA, escalando las variables para igualar su varianza y sin generar gráficos automáticamente
+pca_result <- PCA(datos_pca, scale.unit = TRUE, graph = FALSE)
+
+# Visualizar los eigenvalores para evaluar la cantidad de componentes principales a retener
+fviz_eig(pca_result, addlabels = TRUE)  # Gráfico de eigenvalores
+eig.val <- get_eigenvalue(pca_result)  # Obtener y mostrar eigenvalores
+
+# Extraer y mostrar las variables y su contribución al PCA
+var <- get_pca_var(pca_result)  # Obtener información de las variables en el PCA
+var
+
+```
+
+En el análisis PCA de las canciones de "Los Planetas", se retendrán cinco dimensiones, que en conjunto explican el 81.09% de la varianza total del conjunto de datos. Esta decisión se basa en la contribución progresiva de cada dimensión: la primera aporta el 25.59%, la segunda el 23.10%, la tercera el 11.84%, la cuarta el 10.86%, y la quinta un significativo 9.70%. 
+
+```{r carga de datos5}
+# Ejecutar PCA reteniendo las primeras 4 componentes principales, escalando variables para igualar su varianza, sin generar gráficos automáticamente
+
+pca_result <- PCA(datos_pca, scale.unit = TRUE, ncp = 4, graph = FALSE)
+
+```
+
+### Primer vs segundo eje
+
+```{r carga de datos6}
+
+# Visualizar variables del PCA por contribución en las dos primeras dimensiones
+# Colorea las variables según su contribución, usa un gradiente de color, y evita la superposición de texto
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(1, 2))
+
+# Visualizar variables del PCA por calidad de representación (cos2) en las dos primeras dimensiones
+# Colorea las variables según su cos2, usa un gradiente de color, y evita la superposición de texto
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(1, 2))
+
+
+```
+
+
+Es importante tener en cuenta tanto la contribución al eje como la calidad de respresentación dada por el cos2. Observamos que las variables que más aportan a estas dos dimensiones son energia, valence y danceability
+
+Destacan las relaciones:
+
+Energía y Tempo: Estas variables están alineadas en la misma dirección en la primera dimensión, lo que indica que las canciones con un tempo más rápido tienden a ser percibidas como más enérgicas. .
+
+Bailableidad y Valencia: Se encuentran cercanas al origen y dispersas entre las dos dimensiones, lo que implica que su variabilidad no es capturada predominantemente por las dos primeras dimensiones del PCA. Sin embargo, su ubicación sugiere que la bailableidad y la valencia pueden tener una influencia moderada y equilibrada en ambas dimensiones, lo que podría interpretarse como una asociación entre las canciones bailables y una sensación de positividad.
+
+Energia y acousticness:  Se encuentran en direcciones opuestas en la dimension 1, indicando que las canciones mas energicas son menos acusticas.
+
+Valence y duration: Se encuentran en direcciones opuestas en el eje dos, lo que nos podría decir que a mayor duración de una canción es menos la sensación de positividad,
+
+### Primer eje  vs tercer eje
+
+```{r carga de datos7}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(1, 3)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(1, 3)
+)
+
+
+```
+
+
+Canciones en Vivo y Acústicas: Aunque la acústica y la vivacidad no son las más destacadas en Dim1, su moderada presencia en Dim3 sugiere que podrían estar más relacionadas con características como la presencia de público o la atmósfera de una actuación en vivo.
+
+Speechiness y Liveness (vivacidad): Se observa una proximidad entre speechiness y liveness en Dim3. Esto puede indicar que las canciones con mayor contenido hablado también pueden ser aquellas que tienen una mayor probabilidad de ser grabaciones en vivo o de contener elementos en vivo, como aplausos o interacciones con la audiencia.
+
+### Primer eje  vs cuarto eje
+
+```{r carga de datos8}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(1, 4)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(1, 4)
+)
+
+
+```
+
+Instrumentales y speechiness: Las canciones que tienen un alto grado de speechiness probablemente serán bajas en instrumentalness. Indicando que las canciones instrumentales tendrían menor cantidad de palabras habladas.
+
+Acousticness  y valence: Las canciones con alta acústica no tienden a ser las más positivas o alegres, y las canciones con alta valencia no son necesariamente acústicas. 
+
+### segundo  eje  vs tercer eje
+
+```{r carga de datos9}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(2, 3)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(2, 3)
+)
+
+
+```
+Valencia y Danceability (Bailableidad): Estas dos variables parecen estar alineadas a lo largo de la Dim3, indicando que las canciones con mayor valencia, que típicamente son más positivas y alegres, también tienden a ser más bailables. Esto sugiere que hay una asociación entre el carácter alegre de la música y su aptitud para el baile.
+
+
+Liveness (Vivacidad) y Speechiness (Hablabilidad): Estas variables, ubicadas en la parte superior del gráfico y más cerca de la Dim3, sugieren que las canciones con mayor presencia de audiencia en vivo o elementos de grabación en vivo tienden a tener más contenido hablado. 
+
+### segundo  eje  vs cuarto eje
+
+```{r carga de datos10}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(2, 4)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(2, 4)
+)
+
+
+```
+
+No se infieren cosas nuevas a las anteriores mencionadas.
+
+### tercer  eje  vs cuarto eje
+
+```{r carga de datos11}
+
+fviz_pca_var(pca_result, col.var = "contrib", 
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, 
+             axes = c(3, 4)) 
+
+fviz_pca_var(pca_result, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"),
+             repel = TRUE,
+             axes = c(3, 4)
+)
+
+
+```
+
+Se destaca que para la dimensión 3 es muy importante la caracteristica dada por liveness.
+
+## 2.
+Con base en las nubes de individuos y variables, describan los álbumes de esta banda. ¿Cuáles podrían ser más enérgicos, positivos, entre otras características?
+
+
+
+Para verlo vamos a tener 3 vistas, comnbinando ejes. Tendremos en cuenta la nube de individuos con las variable album como auxiliar, una nube de individuos coloreando las canciones dependiendo del album y el circulo de correlaciones.
+
+
+### Primer vs segundo eje
+
+```{r carga de datos15}
+
+# Cargar librerías necesarias para visualización
+library(FactoMineR)
+library(factoextra)
+library(ggrepel)
+library(ggplot2)
+
+# Seleccionar datos para PCA excluyendo las primeras 3 columnas
+datos_para_pca <- canciones[, -(1:3)]
+
+# Mostrar dimensiones de los datos seleccionados
+dim(datos_para_pca)
+
+# Realizar PCA con la primera columna como variable cualitativa, sin gráficos y escalando variables
+res <- PCA(datos_para_pca, quali.sup = 1, graph = FALSE, scale.unit = TRUE, ncp = 4)
+
+# Crear dataframe con coordenadas de la variable cualitativa (supuestamente álbumes) y añadir nombres de álbumes
+album_data <- as.data.frame(res$quali.sup$coord)
+album_data$album <- rownames(album_data)
+
+# Definir colores para cada álbum
+colors_for_albums <- c("red", "blue", "green", "yellow", "orange", "purple", "pink", "brown", "cyan")
+
+# Generar y mostrar gráficos PCA para combinaciones de las primeras 4 componentes, coloreando por álbum
+for(i in 1:3) {
+  for(j in (i+1):4) {
+    p <- fviz_pca_ind(res, geom.ind = "point", repel = TRUE, axes = c(i, j)) +
+      theme_minimal() +
+      geom_point(data = album_data, aes_string(x = paste0("Dim.", i), y = paste0("Dim.", j), color = "album"), size = 5) +
+      scale_color_manual(values = colors_for_albums) +
+      guides(color = guide_legend(title = "Álbum")) +
+      ggtitle(paste("PCA - Eje", i, "vs. Eje", j))
+    
+    print(p)  # Muestra el gráfico
+  }
+}
+
+```
+
+```{r carga de datos16}
+
+
+library(gridExtra) # Cargar librería para manipulación de gráficos
+
+# Inicializar lista para almacenar gráficos y contador
+plots <- list()
+count <- 1
+
+# Bucle para generar gráficos de PCA para todas las combinaciones de los primeros 4 ejes
+for(i in 1:3) {
+  for(j in (i+1):4) {
+    p <- fviz_pca_ind(res,
+                      axes = c(i, j), # Especifica los ejes a visualizar
+                      geom.ind = "point", # Usa puntos para representar las observaciones
+                      habillage = 1, # Colorea por la primera variable cualitativa (ej. álbum)
+                      palette = "jco", # Estilo de colores
+                      addEllipses = FALSE, # No añadir elipses de confianza
+                      legend.title = "Álbum") + # Título de leyenda
+      theme_minimal() + # Tema minimalista para el gráfico
+      ggtitle(paste("Eje", i, "vs. Eje", j)) # Añadir título al gráfico
+    
+    # Mostrar el gráfico
+    print(p)
+  }
+}
+
+
+```
+
+
+
+Basándonos en la interpretación de los gráficos de individuos generados a partir del análisis PCA, donde consideramos los álbumes como variables cualitativas suplementarias, observamos una notable dispersión entre las canciones pertenecientes a los mismos álbumes. Esta inclusión de los álbumes en el análisis nos permite examinar cómo las agrupaciones de canciones por álbum se relacionan con diversas características musicales. Sin embargo, recordando los círculos de correlación analizados previamente, podemos extraer algunas conclusiones interesantes sobre la naturaleza y características de ciertos álbumes en relación con los atributos musicales evaluados:
+
+Álbum "Encuentros con otras identidades": Se percibe como energético, destacándose en el plano 2 y 1, lo que denota una fuerte presencia de canciones vibrantes, posiblemente debido a ritmos intensos o temáticas estimulantes.
+
+Álbum "Zona Temporalmente Autónoma": Su tendencia hacia la acústica se ve en los planos factoriales 1 y 2, sugiriendo una proximidad a sonidos orgánicos y posiblemente una duración extendida de las pistas, como insinúa su posición en el plano 1.3. Además, el plano 2.4 refuerza su naturaleza acústica, subrayando una producción menos electrónica y más enfocada en elementos sonoros puros.
+
+Álbum "Pop": Su alta valencia, evidente en el plano 1 y 2, indica un álbum lleno de canciones alegres y optimistas. Este carácter se confirma en el plano 2.3, donde también se destaca por su energía y positividad.
+
+Álbum "Los Planetas contra la Ley de la Gravedad": Su inclinación hacia la 'danceability' se nota en los planos 1 y 2, sugerente de ritmos que invitan al movimiento. Además, la presencia de elementos instrumentales se sugiere en el plano 1.4, mientras que los planos 2.3 y 2.4 lo perfilan como un álbum con una mezcla de alta 'danceability' y valencia, y el plano 3.4 destaca su componente instrumental.
+
+Álbum "Unidad de Desplazamiento" y "La leyenda del espacio" muestran similitudes en liveness, especialmente en el plano 1.3, indicando una presencia palpable de energía en vivo. El plano 2.3 adicionalmente sugiere que "La leyenda del espacio" comparte esta característica, con matices de 'speechiness'.
+
+Álbum "Super 8" parece distinguirse por la duración de sus pistas, como lo indica su posición en el plano 2.3, insinuando que podría contener canciones más largas de lo habitual.
+
+Álbumes "Una semana en el motor de un autobús" y "Una Opera egipcia" se caracterizan por su diversidad, sugiriendo una amplia gama de estilos y sonidos, lo que podría reflejarse en una variabilidad considerable en sus atributos musicales a través de los distintos planos factoriales.
+
+
+No se añadieron elipses a las nubes de individuos debido a que estas se sobreponian y no se lograba interpretar bien debido a la dispersión que existe entre las canciones de cada album 
+
+## 3. 
+
+Explique el funcionamiento de los ejes de variables. ¿Qué separa el primer y el segundo eje?
+
+Se podría ver desde dos enfoques, uno apartir de los planos factoriales generados en el primer punto y otro interpretando las dimensiones como tal:
+
+Con los planos factoriales del primer punto:
+
+### Eje 1 vs Eje 2
+
+El primer eje horizontal (Dim1) explica el 25.6% de la variabilidad en los datos. Las variables que más contribuyen en esta dirección son 'energy', 'tempo' y 'speechiness', indicando que este eje podría estar representando aspectos de la música relacionados con el ritmo y la presencia de voz. Las flechas apuntando hacia la derecha sugieren que altos valores en estas variables se asocian con una mayor puntuación en el primer componente principal.
+
+El segundo eje vertical (Dim2) explica el 23.1% de la variabilidad. Las variables 'acousticness', 'instrumentalness' y 'duration' se proyectan en este eje, lo que sugiere que captura la naturaleza acústica y la duración de las pistas. La dirección hacia arriba para 'acousticness' e 'instrumentalness' indica que las canciones más acústicas y menos vocales tienden a tener puntuaciones más altas en el segundo componente principal.
+
+Juntos, el primer y segundo ejes capturan el 48.7% de la variabilidad total de los datos, proporcionando una representación simplificada pero comprensiva de la estructura de variabilidad en el conjunto de datos analizado. La ortogonalidad de los ejes garantiza que los aspectos de la variabilidad que cada uno captura son independientes: el primer eje se asocia con la energía y el ritmo, mientras que el segundo eje refleja la acústica y las características instrumentales de las pistas.
+
+### Eje 1 vs Eje 3
+
+ El primer eje, como se indicó anteriormente, explica el 25.6% de la variabilidad y parece estar relacionado con características como 'energy', 'tempo', 'speechiness', y 'valence'. Estas variables tienen proyecciones largas hacia la derecha, indicando que una mayor energía, un tempo más rápido, más presencia de voz y un mayor valor de valencia se asocian con puntuaciones más altas en Dim1.
+
+El tercer eje (Dim3), que explica el 11.8% de la variabilidad, presenta un nuevo conjunto de relaciones entre las variables y la variabilidad de los datos. Por ejemplo, 'liveness' tiene una proyección larga hacia arriba en Dim3, lo que indica que las grabaciones con mayor presencia de audiencia en vivo o un sonido más 'vivo' tendrán puntuaciones más altas en este componente.
+
+### Eje 1 vs Eje 4
+
+
+El primer eje horizontal (Dim1), que explica el 25.6% de la variabilidad en los datos, tiene una fuerte correlación con las variables 'energy', 'tempo' y 'speechiness'. Esto indica que este eje podría representar aspectos dinámicos y expresivos de la música, ya que altos valores en estas variables se asocian con una mayor puntuación en Dim1, sugiriendo que las canciones más energéticas, rápidas y vocales están agrupadas en esta dirección.
+
+El cuarto eje vertical (Dim4), que explica el 10.9% de la variabilidad, muestra proyecciones menos marcadas de las variables, lo que indica una menor contribución a la variabilidad total de los datos en comparación con los ejes anteriores. Las variables 'danceability', 'duration', y 'acousticness' se proyectan ligeramente hacia este eje. La interpretación específica de Dim4 depende del contexto de los datos y puede ser menos intuitiva, pero podría estar capturando aspectos sutiles y complejos de los datos que no están presentes en los primeros tres componentes.
+
+Al combinar el primer y el cuarto ejes, no obtenemos una suma directa de la variabilidad porque no son ejes consecutivos. Sin embargo, aún representan dimensiones independientes de la variabilidad en los datos.
+
+### Eje 2 vs Eje 3
+
+El segundo eje horizontal (Dim2), que explica el 23.1% de la variabilidad en los datos, muestra una fuerte correlación con variables como 'acousticness' e 'instrumentalness'. Esto sugiere que este eje podría estar representando características musicales que se relacionan con la pureza acústica y la ausencia de voces en la música. Las proyecciones largas y hacia la izquierda de 'danceability' y 'valence' indican que los valores más bajos en estas variables se asocian con una mayor puntuación en Dim2, lo que podría interpretarse como una inclinación hacia pistas menos bailables y con menor positividad emocional.
+
+El tercer eje vertical (Dim3), que explica el 11.8% de la variabilidad, tiene proyecciones menos pronunciadas en comparación con los ejes anteriores. Sin embargo, 'liveness' muestra una correlación moderada con este eje, lo que podría interpretarse como que Dim3 captura una dimensión relacionada con la presencia de audiencia en vivo o la energía en vivo en las grabaciones.
+
+Juntos, el segundo y tercer eje no suman directamente su variabilidad como lo harían el primero y segundo ejes, pero combinados explican un 34.9% de la variabilidad total de los datos. 
+
+
+### Eje 2 vs 4
+
+El segundo eje horizontal (Dim2) explica el 23.1% de la variabilidad en los datos. Este eje muestra una correlación positiva con 'acousticness' e 'instrumentalness', y una correlación negativa con 'danceability' y 'valence'. Esto indica que Dim2 distingue entre canciones que son más acústicas e instrumentales versus aquellas que son más bailables y con valencias emocionales más positivas.
+
+El cuarto eje vertical (Dim4), que explica el 10.9% de la variabilidad, parece estar asociado positivamente con 'liveness' y 'duration', mientras que 'energy' y 'speechiness' se proyectan ligeramente hacia este eje pero con menor magnitud. Esto podría interpretarse como que Dim4 captura una dimensión relacionada con la vivacidad y la longitud de las canciones, así como ciertos aspectos de la energía y la presencia vocal, aunque estas últimas en menor grado.
+
+### Eje 3 vs 4
+
+
+El tercer eje horizontal (Dim3) explica el 11.8% de la variabilidad en los datos. Las variables 'liveness' y 'valence' muestran las proyecciones más largas sobre este eje, lo que podría indicar que Dim3 está capturando aspectos de la música relacionados con la vivacidad de la grabación y la positividad emocional. Las variables 'danceability' y 'energy' también se proyectan hacia este eje, pero con proyecciones más cortas, sugiriendo que tienen una asociación más moderada con él.
+
+El cuarto eje vertical (Dim4), que explica el 10.9% de la variabilidad, tiene una fuerte proyección de 'instrumentalness', indicando que esta dimensión podría estar representando la naturaleza instrumental o no vocal de la música. 'Speechiness' y 'acousticness' también se proyectan en Dim4, pero en direcciones opuestas, lo que sugiere que este eje podría estar diferenciando entre pistas habladas o con contenido de palabra hablada frente a aquellas que son más acústicas.
+
+Juntos, el tercer y cuarto eje no suman su variabilidad de manera directa porque no son ejes consecutivos, pero combinados explican un 22.7% de la variabilidad total de los datos.
+
+
+
+Para comprender el papel de cada eje en un Análisis de Componentes Principales (PCA), podemos revisar la resumen que muestran las coordenadas de las variables, sus contribuciones y la calidad de representación (cos²) en los ejes. Estos elementos son cruciales para discernir qué atributos musicales son los más relevantes en cada componente principal y cómo contribuyen a la variabilidad general de los datos.
+e.
+
+```{r carga de datos12}
+
+# Cargar el paquete corrplot para visualización de matrices de correlación
+library(corrplot)
+
+# Extraer información de las variables del resultado PCA
+var <- get_pca_var(pca_result)
+
+# Mostrar las coordenadas de las variables en los componentes principales
+head(var$coord)
+
+# Mostrar cos2 para entender la calidad de representación de las variables en el mapa de factores
+head(var$cos2)
+
+# Mostrar contribuciones de las variables a los componentes principales
+head(var$contrib)
+
+# Visualizar el cos2 de las variables usando corrplot, no interpretar como correlaciones
+corrplot(var$cos2, is.corr=FALSE)
+
+```
+
+
+El primer eje, o Dimensión 1, se caracteriza por la preponderancia de la energía (energy), que presenta la mayor carga positiva en este eje. Le siguen la valencia (valence) y el tempo (tempo), lo que sugiere que este eje captura primordialmente la energía de las canciones, complementada significativamente por su positividad y ritmo. Este eje distingue, por tanto, las canciones con un carácter más enérgico y estimulante de aquellas con un tono más lento y sosegado.
+
+El segundo eje, o Dimensión 2, se define por la alta carga negativa de la danzabilidad (danceability) y la carga positiva de la duración (duration), con la valencia (valence) también mostrando una carga notable aunque negativa. Este eje parece diferenciar las canciones más propensas al baile, que suelen ser más cortas y alegres, de aquellas que son más largas y, posiblemente, menos optimistas.
+
+El tercer y cuarto eje, aunque capturan menos variabilidad y son típicamente de menor interpretación en PCA, también aportan sus matices distintivos. La duración vuelve a destacarse en el tercer eje con una carga alta negativa, lo que podría implicar un enfoque en aspectos estructurales de las canciones no capturados por los dos primeros ejes. En cuanto al cuarto eje,
+
+la acústica (acousticness) se manifiesta con la carga más alta en sentido negativo, lo que podría reflejar una distinción entre las canciones con elementos acústicos frente a aquellas con una producción más electrónica o procesada.
+
+El corrplot proporcionado ilustra el cuadrado del coseno (cos²) de cada variable en cada eje, indicando cuán bien cada atributo musical está representado por cada componente principal. En el primer eje, la energía destaca como la mejor representada, afirmando que este eje es un indicador fiable del nivel de energía en las canciones. Por su parte, el segundo eje resalta la danzabilidad como el atributo más representativo, sugiriendo que este eje refleja primordialmente la aptitud de las canciones para el bail
+
+Además, La separación entre el primer y el segundo eje radica en que cada uno captura diferentes aspectos de la variabilidad en los datos. El primer eje captura la mayor variabilidad posible, mientras que el segundo eje captura la mayor variabilidad posible que es ortogonal (independiente) al primer eje.
+
+## 4. 
+¿La proyección es suficientemente buena para poder interpretar los datos para todas las variables? Justifique su respuesta
+
+
+
+Para determinar si la proyección de un Análisis de Componentes Principales (PCA) es suficiente para interpretar los datos, se debe evaluar la calidad de la representación de cada variable en los componentes principales, lo cual se refleja en los valores de cos². El cos² indica la proporción de la varianza de la variable que es capturada por cada dimensión del PCA. En general, un valor de cos² cercano a 1 significa que la variable está muy bien representada en esa dimensión, mientras que un valor cercano a 0 indica una representación pobre.
+
+```{r carga de datos22}
+
+# Extraer información de las variables del resultado del PCA
+var <- get_pca_var(pca_result)
+
+# Inspeccionar la estructura de 'var' 
+var
+
+# Mostrar los primeros valores de cos2 para evaluar la calidad de representación de cada variable
+head(var$cos2)
+
+```
+Energía (energy): Tiene un cos² de 0.788 en la Dimensión 1, lo que indica que esta variable está muy bien representada en el primer componente. Es decir, la Dimensión 1 es un fuerte indicador del nivel de energía en las canciones.
+
+Danzabilidad (danceability): Con un cos² de 0.685 en la Dimensión 2, la danzabilidad está bien representada en el segundo componente, lo que significa que la Dimensión 2 es un buen reflejo de la aptitud de las canciones para el baile.
+
+Acústica (acousticness): Tiene un cos² relativamente alto de 0.425 en la Dimensión 1, y también una representación significativa en la Dimensión 4 con un cos² de 0.217. Esto sugiere que la Dimensión 1 captura una parte importante de la acústica, pero para una interpretación completa, se debería considerar también la Dimensión 4.
+
+Para las demás variables como duración (duration), tempo, y valencia (valence), aunque tienen representaciones significativas en varias dimensiones, no hay una dimensión donde su cos² sea extremadamente alto, lo que sugiere que ninguna dimensión por sí sola las captura completamente.
+
+En relación con la variabilidad, los cuatro ejes principales consiguen capturar en conjunto el 81.09% de la variabilidad total, lo cual es notable considerando que la contribución varía con cada par de ejes. Por ejemplo, la combinación de los ejes 1 y 2 logra explicar el 48.69% de la variabilidad. 
+
+
+
+#  Punto
+
+
+
+La reducción de dimensionalidad no se centra únicamente en las aproximaciones que proyectan los datos en una dimensión diferente como en el caso de PCA, MCA o KPCA. También se incluye la selección o eliminación de las variables menos representativas por lo que hay herramientas como la selección recursiva hacia adelante o hacia atrás. Sin embargo, hay otras alternativas que puede usar en este sentido como los métodos Wrapper como el caso de la eliminación recursiva de rasgos (RFE) o filtros como la importancia de variables. Con base en lo anterior: 
+
+1. Investigue cuáles son los métodos más usados para hacer selección de rasgos y describa su funcionamiento a través de R con un ejemplo con la base de datos de expertos de Vino disponible en Bloque Neón con nombre“data_PCA_ExpertWine.csv” 
+
+#### **RESPUESTA**:
+
+Las librerias  que se necesitan para el desarrollo de este punto son las siguientes:
+```{r Librerias, echo=TRUE, message=FALSE, warning=FALSE}
+library(readr)
+library(MASS)
+library(dplyr)
+library(randomForest)
+library(caret)
+library(e1071)
+```
+Como primer paso se lee la base de datos, de la siguiente forma:
+```{r Lectura Base de Datos, echo=TRUE, warning=FALSE}
+data_PCA_ExpertWine <- read_delim("data_PCA_ExpertWine.csv",delim = ";", escape_double = FALSE, trim_ws = TRUE)
+data_PCA_ExpertWine$Label <- as.factor(data_PCA_ExpertWine$Label)
+# Establecer la columna 'id' como el índice
+rownames(data_PCA_ExpertWine) <- data_PCA_ExpertWine$...1
+
+# Eliminar la columna 'id' del dataframe
+data_PCA_ExpertWine <- data_PCA_ExpertWine[, -1]
+data_PCA_ExpertWine$Label
+```
+### 1. Filtrado de importancia de variables:
+
+Este método evalúa cada característica individualmente mediante el análisis de medidas estadísticas para determinar su relevancia en la predicción de la variable objetivo. Las características se clasifican según su capacidad predictiva, que puede ser evaluada mediante su correlación con la variable de salida o su importancia estadística. Usualmente, se aplica antes del modelado de los datos para seleccionar las características más relevantes.
+
+Se pueden emplear diversas formas de evaluar la correlación entre las variables:
+
+1. Para variables explicativas y la variable a predecir continuas, se puede utilizar la correlación de Pearson.
+2. Cuando las variables explicativas son categóricas y la variable a predecir es continua, se puede recurrir al ANOVA.
+3. Si las variables explicativas son continuas y la variable a predecir es categórica, se puede emplear el Análisis Lineal Discriminante.
+4. Para variables explicativas y la variable a predecir categóricas, se pueden aplicar pruebas de Chi-cuadrado.
+
+
+Para el ejemplo en R, se utilizará el Análisis Lineal Discriminante (LDA), dado que la variable objetivo es categórica y será explicada por variables continuas.
+
+```{r Filtración por importancia de variables, echo=TRUE}
+# Ajustar el modelo LDA
+lda_model <- lda(Label ~ ., data = data_PCA_ExpertWine)
+
+# Obtener las características más importantes
+important_features <- lda_model$scaling
+
+# Obtener los coeficientes de discriminación
+discrimination_coef <- as.data.frame(abs(lda_model$scaling))
+
+# Ordenar los coeficientes de discriminación
+datos_organizados <- arrange(discrimination_coef, desc(LD1))
+
+# Seleccionar las mejores características 
+best_features <- datos_organizados%>% filter(LD1 >= 0.2)
+
+# Mostrar las mejores características seleccionadas
+print(best_features)
+```
+
+### 2. Wrapper Methods (Métodos de envoltura):
+
+Estos métodos evalúan diferentes subconjuntos de características utilizando un modelo de aprendizaje automático específico, empleando técnicas de búsqueda exhaustiva (por ejemplo, forward selection, backward elimination) para encontrar el conjunto óptimo de características que maximiza el rendimiento del modelo.
+
+La idea principal del método wrapper es seleccionar el mejor conjunto de variables al evaluar el rendimiento de un modelo mediante diferentes subconjuntos de variables. Este enfoque es especialmente relevante en el contexto de los modelos de machine learning, donde el objetivo es que el modelo actúe como una caja negra con el mejor subconjunto de variables. La selección de variables puede realizarse de manera iterativa o considerando combinaciones de todas las variables disponibles. Dentro de los métodos de Wrapper, se destacan tres enfoques específicos: la Búsqueda Exhaustiva del Mejor Subconjunto (**Exhaustive Feature Selection**), la Eliminación Secuencial (**Sequential Backward Selection/Elimination**) y la Selección Secuencial (**Sequential Forward Selection**).
+
+A manera de muestra en el código de abajo se maneja la selección secuencial del subconjunto de variables. 
+
+```{r WRAPPER, echo=TRUE, warning=FALSE}
+# Definir el problema de clasificación
+problem <- data_PCA_ExpertWine[, -1] 
+target <- data_PCA_ExpertWine$Label 
+
+# Crear un objeto trainControl para especificar el método de validación cruzada
+train_control <- trainControl(method = "cv", number = 5)
+
+# Definir el modelo SVM
+svm_model <- train(problem, target, method = "svmLinear", trControl = train_control)
+
+# Realizar Sequential Forward Selection con el modelo SVM
+ctrl <- rfeControl(functions = rfFuncs, method = "cv", number=5)
+wrapper_model <- rfe(problem, target, sizes = c(1:27), rfeControl = ctrl)
+print(wrapper_model$results)
+
+# Mostrar las características seleccionadas
+print(wrapper_model$optVariables)
+
+```
+
+
+### 3. Embedded Methods (Métodos incrustados):
+
+Los métodos incrustados en la selección de características son una clase de enfoques donde la selección de características se integra directamente en el proceso de entrenamiento del modelo. En lugar de realizar la selección de características como un paso independiente, los algoritmos de aprendizaje automático utilizan técnicas internas para identificar automáticamente las características más relevantes durante el proceso de entrenamiento del modelo. Esto permite que el modelo seleccione las variables más importantes según su contribución al rendimiento del modelo.
+
+En R, varios algoritmos de aprendizaje automático, como los modelos de regularización, implementan métodos de selección de características como parte de su proceso de entrenamiento. Por ejemplo, los modelos Random Forest incorporan una técnica de selección de características que evalúa la importancia de cada característica durante el proceso de construcción del árbol. De esta manera, el modelo mismo selecciona las variables más relevantes para mejorar su rendimiento predictivo.
+
+El ejemplo que se va a utilizar del método incrustado va a trabajar un modelo de Random Forest en R para la selección de características:
+```{r Embedded Methods, echo=TRUE, warning=FALSE}
+# Dividir los datos en conjuntos de entrenamiento y prueba
+training_index <- createDataPartition(data_PCA_ExpertWine$Label, p = 0.7, list = FALSE)
+training_data <- data_PCA_ExpertWine[training_index, ]
+test_data <- data_PCA_ExpertWine[-training_index, ]
+
+# Crear un modelo Random Forest
+rf_model <- randomForest(Label ~ ., data = data_PCA_ExpertWine)
+
+# Mostrar la importancia de las características según el modelo Random Forest
+print(importance(rf_model))
+
+# Seleccionar las características más importantes
+important_features <- rownames(importance(rf_model))[order(importance(rf_model), decreasing = TRUE)]
+
+# Mostrar las características más importantes
+print(important_features)
+```
+
+2. Explique cuáles son sus principales características y cuáles ventajas o desventajas trae su implementación. ¿Cuál contemplaría en su análisis y por qué?
+
+#### **RESPUESTA**:
+
+### 1. Filtrado de importancia de variables:
+
+El método de filtrado de importancia de variables se lleva a cabo antes del modelado, lo que permite una selección de características que puede ser aplicada de manera transversal a varios modelos. La evaluación se basa en medidas como la correlación o la importancia estadística, simplificando así la interpretación y el proceso de selección. Las ventajas de este enfoque son las siguientes:
+
+1. Es altamente eficiente desde el punto de vista computacional, ya que se realiza de manera descriptiva la selección de variables.
+
+2. Es más simple que otros métodos de selección de variables, ya que no requiere la evaluación de múltiples subconjuntos de variables mediante un modelo complejo.
+
+3. El resultado de la selección de variables no cambia independientemente del modelo utilizado, ya que la selección se realiza antes del entrenamiento del modelo.
+
+4. La interpretación de por qué se seleccionaron ciertas variables es sencilla y fácil de explicar a personas sin conocimientos técnicos.
+
+Sin embargo, este método también presenta algunas desventajas:
+
+1. No tiene en cuenta las interacciones entre variables, ya que cada variable se evalúa de manera individual.
+
+2. No considera el funcionamiento interno del modelo seleccionado, lo que puede llevar a que algunas variables no sean representativas dentro del modelo final.
+
+### 2. Wrapper Methods (Métodos de envoltura):
+
+El método Wrapper de selección de variables implica la generación de subconjuntos de características, lo que puede lograrse de varias maneras, como mediante métodos de eliminación hacia adelante o hacia atrás, o considerando combinaciones diversas de todas las variables disponibles. Posteriormente, se evalúa cada uno de estos subconjuntos con el modelo definido para el caso particular, midiendo su rendimiento, generalmente a través de técnicas como validación cruzada, error cuadrático medio (MSE) o precisión del modelo. Se puede establecer un criterio de parada para evitar la evaluación de un número excesivo de modelos. Las ventajas de este enfoque son las siguientes:
+
+1. El método Wrapper tiende a ofrecer una precisión muy elevada, ya que permite seleccionar y ajustar el modelo según las necesidades específicas de cada caso.
+
+2. Se consideran las posibles interacciones entre las variables, ya que al evaluar una amplia variedad de subconjuntos, se tienen en cuenta relaciones que pueden no ser evidentes inicialmente, pero que pueden resultar significativas durante la evaluación del modelo.
+
+Sin embargo, este método presenta algunas desventajas:
+
+1. Es propenso a requerir mucho tiempo y poder computacional, especialmente cuando se evalúan numerosos modelos, lo que puede volverse prohibitivo en términos de recursos, especialmente para modelos de alta complejidad o para la busqueda exhaustiva de variables.
+
+2. Existe el riesgo de sobreajustar las variables al modelo con el que se seleccionaron, lo que puede conducir a una pérdida de generalización y a un rendimiento subóptimo en datos no observados
+
+### 3. Embedded Methods (Métodos incrustados):
+
+El método embedded de selección de características lleva a cabo la selección de variables directamente durante el proceso de entrenamiento del modelo de aprendizaje automático, permitiendo que el propio modelo identifique la importancia y representatividad de las características. En lugar de tratar la selección de características como un paso independiente, este enfoque aprovecha las técnicas internas de los algoritmos de aprendizaje automático para identificar automáticamente las características más relevantes. Sus ventajas son las siguientes:
+
+1. Elimina la necesidad de un preprocesamiento separado de las variables antes del entrenamiento del modelo. Al integrar la selección de características en el proceso de entrenamiento, se evitan los costos computacionales adicionales asociados con los pasos de modelado por separado.
+
+2. Reduce el riesgo de sobreajuste, ya que el modelo selecciona el mejor subconjunto de variables de acuerdo con los parámetros predefinidos, lo que permite un equilibrio más efectivo entre la complejidad del modelo y su capacidad de generalización.
+
+Sin embargo, este método presenta algunas desventajas:
+
+1. No todos los modelos de aprendizaje automático incorporan técnicas de selección de características integradas, lo que limita su aplicabilidad. Es importante conocer qué modelos admiten este enfoque.
+
+2. La efectividad de la selección de características depende en gran medida del rendimiento y la capacidad de generalización del modelo utilizado. No todos los modelos ofrecen los mismos resultados, y la selección de características puede variar según las características específicas del modelo.
+
+Para conjuntos de datos con una cantidad limitada de muestras, como en el caso de "data_PCA_ExpertWine.csv", donde la información sobre los vinos es escasa, el enfoque más adecuado para evaluar la importancia de las variables es el de Filtrado de la importancia de las variables. Dado que no se dispone de poca información para una ejecución exitosa de los modelos, es más práctico interpretar la relación entre las variables explicativas y la variable "Label" mediante un análisis discriminante lineal. 
