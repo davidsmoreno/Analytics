@@ -1,0 +1,128 @@
+---
+title: "Quiz 2 Mineria de Datos"
+author: "David Moreno"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: false
+    theme: cosmo
+    highlight: tango
+---
+
+### Universidad de los Andes Minería de Datos – MIIA 4200 
+
+Profesor: Rafael Amaya Gómez 
+ 
+```{r,echo=FALSE}
+setwd("C:/Users/David/Documents/Analytics/Semester 2/Mineria de Datos/Quiz 2")
+
+```
+
+
+# Punto 1
+
+El dataset Wage (librería ISLR) trabajado en clase tiene otras variables no exploradas
+como el estado marital (maritl), o la clase de trabajo (jobclass) y otras. Explore las
+relaciones entre por lo menos estas dos variables con la variable respecto a wage,
+usando técnicas de ajuste no lineal para ajustar modelos flexibles a los datos. Cree
+figuras de los resultados obtenidos y describa un resumen de sus hallazgos.
+
+
+```{r, warning=FALSE}
+
+#import the necessary libraries for data manipulation and visualization
+library(tidyverse)
+library(ggplot2)
+library(tidyr) 
+
+
+load("auto.Rdata")
+load("wage.Rdata")
+
+head(Wage)
+```
+
+Prmiero vemos de qué tipo son nuestras variables
+
+```{r,}
+
+str(Wage)
+
+```
+
+Vemos que el año es un entero, el dataframe tiene 3000 observaciones con 11 variables para el caso del quiz nos conviene ver las dos variables que estamos considerando que son jobclass y maritl, vemos que la variable jobclass es un factor que tienee 2 niveles y que maritl tiene 5 niveles, eso quiere decir el número de categorias en variable.
+
+Por lo tanto una buena forma de comenzar el análisis es hacer una gráfica por cada categoria en un box plot mostrando la variable wage
+
+
+```{r}
+
+
+# Calcular el salario promedio por clase de trabajo
+mean_wage <- Wage %>%
+  group_by(jobclass) %>%
+  summarise(mean_wage = mean(wage, na.rm = TRUE))
+
+# Graficar con el salario promedio
+ggplot(Wage, aes(x = jobclass, y = wage)) + 
+  geom_violin() +  # Agregar gráfico de violín
+  geom_hline(data = mean_wage, aes(yintercept = mean_wage), color = "red", linetype = "dashed") +  # Línea horizontal para el salario promedio
+  geom_text(data = mean_wage, aes(x = jobclass, y = mean_wage, label = paste("Mean =", round(mean_wage, 2))), 
+            vjust = -0.5, color = "red", size = 4) +  # Texto para mostrar el salario promedio
+  labs(title = "Salario vs Clase de Trabajo", x = "Clase de Trabajo", y = "Salario") +  # Etiquetas de título y ejes
+  theme_minimal()  # Estilo del gráfico
+
+```
+
+
+Al analizar el gráfico, se destaca un patrón interesante. En primer lugar, al observar las formas tipo violín, se nota que las personas en el área de información tienden a tener salarios más altos, con una media alrededor de 120, mientras que en el área industrial la media está aproximadamente en 103. Además, llama la atención la presencia de algunos valores atípicos en ambas columnas, especialmente más prominentes en el área de información, lo que sugiere que, en general, aquellos en el campo de la información obtienen salarios más altos. Además, parece que estos casos de salarios excepcionalmente altos son más frecuentes en el área de información que en la industrial.
+
+
+```{r,}
+
+# Calcular el salario promedio por estado civil
+mean_wage_marital <- Wage %>%
+  group_by(maritl) %>%
+  summarise(mean_wage = mean(wage, na.rm = TRUE))
+
+# Graficar el salario promedio por estado civil con violin plot y boxplot
+ggplot(Wage, aes(x = maritl, y = wage)) + 
+  geom_violin(color = "blue", fill = "lightblue", alpha = 0.5) +  # Agregar gráfico de violín
+  geom_boxplot(width = 0.2, color = "red", fill = "yellow", alpha = 0.5) +  # Agregar gráfico de boxplot
+  geom_point(data = mean_wage_marital, aes(y = mean_wage), color = "black", size = 3) +  # Puntos para mostrar el salario promedio
+  geom_text(data = mean_wage_marital, aes(y = mean_wage, label = paste("Media w =", round(mean_wage, 2))), 
+            vjust = -0.5, color = "black", size = 3) +  # Texto para mostrar el salario promedio
+  labs(title = "Salario Promedio por Estado Civil", x = "Estado Civil", y = "Salario") +  # Etiquetas de título y ejes
+  theme_minimal()  # Estilo del gráfico
+
+```
+
+Observamos que la media de los individuos que nunca se han casado es la más baja en comparación con los demás estados civiles. Sin embargo, observamos valores atípicos en los salarios más altos. Para las personas casadas, vemos que la media es la más alta con 118, y que existe una alta tendencia a tener valores atípicos más pronunciados en los salarios altos. Para las personas viudas, vemos que no hay valores atípicos y en general los datos están bastante centrados en la media. Para las personas divorciadas, vemos que tienen una media de alrededor de 104 con algunos valores altos pero menos pronunciados que en los grupos de personas nunca casadas y casadas
+
+
+
+```{r}
+
+
+model_gam <- gam(wage ~ s(maritl, bs = "fs"), data = Wage)
+
+# Resumen del modelo para ver significancia y efectos
+summary(model_gam)
+
+# Para visualizar los efectos de 'maritl', que es categórica, sobre 'wage':
+# La función 'plot()' de mgcv puede no ser directamente aplicable para efectos categóricos de la manera más informativa.
+# Sin embargo, podemos obtener los efectos predichos del modelo y visualizarlos manualmente
+
+# Obtener predicciones para cada nivel de 'maritl'
+Wage$predicted_wage <- predict(model_gam, type = "response")
+
+# Gráfico de los efectos de 'maritl' sobre 'wage'
+ggplot(Wage, aes(x = maritl, y = predicted_wage)) +
+  geom_boxplot() +
+  labs(title = "Efectos de Maritl sobre Wage (Modelo GAM)", x = "Estado Civil", y = "Salario Predicho") +
+  theme_minimal()
+
+
+```
