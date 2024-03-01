@@ -21,7 +21,7 @@ setwd("C:/Users/David/Documents/Analytics/Semester 2/Mineria de Datos/Quiz 2")
 ```
 
 
-# Punto 1
+## Punto 1
 
 El dataset Wage (librería ISLR) trabajado en clase tiene otras variables no exploradas
 como el estado marital (maritl), o la clase de trabajo (jobclass) y otras. Explore las
@@ -31,12 +31,10 @@ figuras de los resultados obtenidos y describa un resumen de sus hallazgos.
 
 
 ```{r, warning=FALSE}
-
-#import the necessary libraries for data manipulation and visualization
 library(tidyverse)
 library(ggplot2)
-library(tidyr) 
-
+library(tidyr)
+library(mgcv)
 
 load("auto.Rdata")
 load("wage.Rdata")
@@ -52,7 +50,7 @@ str(Wage)
 
 ```
 
-Vemos que el año es un entero, el dataframe tiene 3000 observaciones con 11 variables para el caso del quiz nos conviene ver las dos variables que estamos considerando que son jobclass y maritl, vemos que la variable jobclass es un factor que tienee 2 niveles y que maritl tiene 5 niveles, eso quiere decir el número de categorias en variable.
+Vemos que el año es un entero, el dataframe tiene 3000 observaciones con 11 variables para el caso del quiz nos conviene ver las dos variables que estamos considerando que son jobclass y maritl, vemos que la variable jobclass es un factor que tienee 2 niveles y que maritl tiene 5 niveles.
 
 Por lo tanto una buena forma de comenzar el análisis es hacer una gráfica por cada categoria en un box plot mostrando la variable wage
 
@@ -101,28 +99,218 @@ ggplot(Wage, aes(x = maritl, y = wage)) +
 
 Observamos que la media de los individuos que nunca se han casado es la más baja en comparación con los demás estados civiles. Sin embargo, observamos valores atípicos en los salarios más altos. Para las personas casadas, vemos que la media es la más alta con 118, y que existe una alta tendencia a tener valores atípicos más pronunciados en los salarios altos. Para las personas viudas, vemos que no hay valores atípicos y en general los datos están bastante centrados en la media. Para las personas divorciadas, vemos que tienen una media de alrededor de 104 con algunos valores altos pero menos pronunciados que en los grupos de personas nunca casadas y casadas
 
+### Regresion Lineal
+
+
+```{r}
+# Seleccionar las columnas relevantes de Wage y asignarlas a Wage_regression
+Wage_regression <- Wage %>% 
+  select(jobclass, wage, age, maritl)
+
+# Realizar one-hot encoding para la variable 'maritl'
+one_hot_maritl <- model.matrix(~ 0 + maritl, data = Wage)
+# Realizar one-hot encoding para la variable 'jobclass'
+one_hot_jobclass <- model.matrix(~ 0 + jobclass, data = Wage)
+
+# Combinar las variables codificadas con Wage_regression
+Wage_regression <- cbind(Wage_regression, one_hot_maritl, one_hot_jobclass)
+
+# Renombrar las columnas según su posición en el conjunto de datos
+colnames(Wage_regression) <- c("jobclass", "wage", "age", "maritl", "Never_Married", 
+                               "Married", "Widowed", "Divorced", "Separated", 
+                               "Industrial", "Information")
+
+# Realizar la regresión lineal con las variables seleccionadas
+regression_model <- lm(wage ~ age + Never_Married + Married + Widowed + 
+                       Divorced + Separated + Industrial + Information, 
+                       data = Wage_regression)
+
+# Mostrar el resumen de la regresión
+summary(regression_model)
+
+```
+
+Primero, queremos explorar la relación entre las variables "jobclass" y "maritl". Para mejorar nuestra comprensión, consideraremos también la variable "age" en nuestro análisis. En este código, realizamos un one-hot encoding para evaluar la relevancia de cada categoría en nuestro modelo.
+
+En el resultado de la regresión, observamos que la variable "Intercept" es estadísticamente significativa, así como "age", "Married" e "Industrial". Sin embargo, las demás variables no parecen tener un peso importante en la regresión.
+
+El coeficiente de determinación $R^{2}$ es de 0.11, lo que indica que nuestro modelo solo puede explicar el 11% de la variabilidad de los datos, lo cual es muy bajo.
+
+Ahora procederemos a utilizar los splines para explorar posibles mejoras en nuestro modelo.
+
+### Splines y Gam
+
+
+
+```{r}
+model_maritl_fs <- gam(wage ~ s(maritl, bs = "fs") + s(jobclass, bs = "fs") + s(age, bs = "cs"), data = Wage_regression)
+summary(model_maritl_fs)
+```
+
+Vemos que ahora utilizando splines tenemos una mejora en nuestra desviación esperada(14.3) en comparación a 11.5 que teniamos anteriormente utilizando las mismas variables, sin embargo para ver qué subcategorias son más importantes en nuestro modelo, vamos a
+
+```{r}
+Wage_regression$predicted_wage <- predict(model_maritl_fs, type = "response")
+
+# Assuming Wage_regression already contains the actual 'wage' and predicted 'predicted_wage'
+Wage_regression$actual_wage <- Wage_regression$wage  # Make sure the actual wage is in the data frame
+
+ggplot(Wage_regression, aes(x = wage, y = predicted_wage)) +
+  geom_point(aes(color = "Actual"), alpha = 0.5) +
+  geom_point(aes(x = predicted_wage, y = predicted_wage, color = "Predicted"), alpha = 0.5) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "red") +
+  scale_color_manual(values = c("Actual" = "blue", "Predicted" = "#f31111")) +
+  labs(title = "Actual vs Valor predicto",
+       x = "Wage actual",
+       y = "Wage predicho") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5))  # Center the plot title
+
+
+```
+
+Observamos que a medida que el salario aumenta, los errores en los valores predichos también aumentan. Los errores más significativos se observan especialmente en salarios superiores a 110. Sin embargo, nuestro modelo no es muy preciso y presenta una notable heteroscedasticidad.
 
 
 ```{r}
 
 
-model_gam <- gam(wage ~ s(maritl, bs = "fs"), data = Wage)
 
-# Resumen del modelo para ver significancia y efectos
-summary(model_gam)
+# Predecir el salario usando el modelo para todas las observaciones
+Wage_regression$predicted_wage <- predict(model_maritl_fs, type = "response")
 
-# Para visualizar los efectos de 'maritl', que es categórica, sobre 'wage':
-# La función 'plot()' de mgcv puede no ser directamente aplicable para efectos categóricos de la manera más informativa.
-# Sin embargo, podemos obtener los efectos predichos del modelo y visualizarlos manualmente
+# Agregar para ver el salario promedio predicho para cada combinación de jobclass y maritl
+salario_promedio_predicho_por_jobclass_maritl <- Wage_regression %>%
+  group_by(jobclass, maritl) %>%
+  summarise(SalarioPromedioPredicho = mean(predicted_wage))
 
-# Obtener predicciones para cada nivel de 'maritl'
-Wage$predicted_wage <- predict(model_gam, type = "response")
+# Imprimir el salario promedio predicho para cada combinación de jobclass y maritl
+print(salario_promedio_predicho_por_jobclass_maritl)
 
-# Gráfico de los efectos de 'maritl' sobre 'wage'
-ggplot(Wage, aes(x = maritl, y = predicted_wage)) +
-  geom_boxplot() +
-  labs(title = "Efectos de Maritl sobre Wage (Modelo GAM)", x = "Estado Civil", y = "Salario Predicho") +
+#Graficar
+ggplot(salario_promedio_predicho_por_jobclass_maritl, aes(x = jobclass, y = SalarioPromedioPredicho, fill = maritl)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Salario promedio predicho por jobclass y maritl",
+       x = "Jobclass",
+       y = "Salario Promedio Predicho",
+       fill = "Maritl") +
   theme_minimal()
+
+```
+Estamos evaluando el desempeño de nuestro modelo en la predicción de valores. Aquí, estamos calculando las medias agrupadas por las variables jobclass y martil. Observamos que las personas que trabajan en la categoría de "Información" tienen salarios ligeramente por encima del promedio en comparación con otras industrias. También notamos que este patrón se repite en cada categoría, donde el salario medio aumenta. Además, observamos que el estado marital "casado" tiene un impacto significativo en los salarios, como ya habíamos visto anteriormente en las gráficas de violín y en la regresión lineal.
+
+
+## Punto 2
+
+
+```{r }
+# Cargar librerías
+library(GGally)
+
+# Cargar el conjunto de datos
+load("auto.Rdata")
+
+
+# Crear la matriz de gráficos de dispersión
+ggpairs(Auto[, 1:8])  # Seleccionar solo las primeras 8 columnas ya que 'name' es categórica y no sería útil en una matriz de gráficos de dispersión
+```
+
+En la gráfica, se observan correlaciones significativas. En particular, se ve una fuerte correlación positiva entre 'mpg' (millas por galón) y las variables 'acceleration' (aceleración), 'year' (año) y 'origin' (origen del vehículo). Esto sugiere que un aumento en la aceleración, el año de fabricación y el origen geográfico del vehículo tienden a estar asociados con un mejor rendimiento de combustible.
+
+Por otro lado, se observan correlaciones negativas marcada entre 'mpg' y 'cylinders' (cilindros), 'displacement' (desplazamiento) y 'horsepower' (potencia). Esta relación indica que los vehículos con más cilindros, mayor desplazamiento y mayor potencia tienden a tener un menor rendimiento de combustible. Esta asociación es coherente con la idea de que los motores más grandes y potentes tienden a consumir más combustible.
+
+Además, se observa que la variable cylinders presenta una distribución que sugiere la existencia de posibles subgrupos. Esto se evidencia en su histograma, donde se aprecia la posibilidad de dos distribuciones distintas dentro de los datos.
+
+
+```{r}
+
+# Ajustar el modelo de regresión lineal múltiple
+modelo <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin, data = Auto)
+
+# Mostrar el resumen del modelo
+summary(modelo)
+
+```
+Observamos que los coeficientes de la intercepción, weight, year y origin, y en menor medida displacement, son significativos en nuestro modelo. Los residuos parecen tener valores mínimos y máximos altos, sin embargo, la media de los residuos está cercana a 0. El coeficiente de determinación (R cuadrado) es 0.82, lo que indica que el modelo explica una gran parte de la varianza en nuestros datos(82%). Además, el valor p asociado al modelo es muy pequeño, lo que sugiere que al menos uno de los predictores está asociado con 'mpg', lo que hace que nuestro modelo sea estadísticamente significativo.
+
+¿Hay alguna relación entre los predictores y la respuesta?
+¿Cuáles predictores tienen una relación estadísticamente significativa
+
+Si, vemos que las variables más significativas son weigth,year y origin y en menor medida displacement. Tienen una relación linea con la variable *mpg*, ahora tambien vemos que el F stadistico es 252 y su valor p es muy pequeño. Lo que nos indica que estadisticamente si hay una relación con almenos una variable predictiva.
+
+
+¿Qué sugiere el coeficiente de la variable year?
+
+El coeficiente de la variable 'year' sugiere una relación lineal entre 'mpg' y el año de fabricación del carro. En promedio, hay un aumento en 'mpg' a medida que el año aumenta. Esto sugiere que los vehículos más recientes tienden a tener un mayor rendimiento de combustible en comparación con vehículos más antiguos.
+
+
+### Diagnostico
+
+```{r}
+# QQ plot de los residuos
+qqnorm(modelo$residuals)
+qqline(modelo$residuals)
+
+# Gráfica de distribución de los residuos con línea en y = 0
+plot(modelo$residuals, ylab = "Residuos", xlab = "Índice de Observación",
+     main = "Distribución de los Residuos")
+abline(h = 0, col = "red")  # Línea en y = 0
 
 
 ```
+
+Al mirar esta gráfica Q-Q, puedo ver que los datos que tengo se alinean bastante bien con lo que esperaríamos si siguieran una distribución normal, al menos hasta llegar a los valores más extremos. Cuando llegamos a los valores más altos, al final de la cola, hay algunos puntos que no encajan tan bien. Esto me dice que podría haber algunos valores atípicos, especialmente pasando el cuantil 3
+
+En la gráfica de residuales, se observa que la mayoría de los puntos se agrupan alrededor de cero, lo que indica un buen ajuste general del modelo. Sin embargo, a partir de la observación 300, algunos puntos divergen significativamente de la línea central, lo que sugiere la presencia de valores atípicos u outliers. Además, se nota una variación en la dispersión de los residuos; estos aparecen más dispersos en el extremo derecho del gráfico, especialmente después de la observación 200. Esta variación en la dispersión de los errores indica que la variabilidad de las predicciones no es constante a lo largo de todo el rango de datos.
+
+### Regresión Lineal con interacciones.
+
+```{r}
+# Realizar una nueva regresión incluyendo interacciones 
+modelo_interaccion <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin +
+                           acceleration:year + origin:year + cylinders:displacement, data = Auto)
+
+summary(modelo_interaccion)
+
+```
+
+Añadiendo las interacciones acceleration:year, year:origin, y cylinders:displacement, vemos que tenemos un $R^{2}$ de $0.86$ y un error residual estandar de 2.97 que es menor al que teniamos, tenemos un modelo mejor, sin embargo estamos perdiendo interpretabilidad al añadir las interacciones.
+
+¿Recomendaría usar alguna transformación como $Log(X)$ o $X^{2}$
+
+Como vimos anteriormente, tenemos un posible problema de heterosedasticidad. Luego una transformación Logaritmica nos puede ayudar.
+
+```{r}
+# Aplicar la transformación logarítmica a la variable de respuesta
+Auto$log_mpg <- log(Auto$mpg)
+
+# Realizar una nueva regresión con la variable de respuesta transformada
+modelo_interaccion_log <- lm(log_mpg ~ cylinders + displacement + horsepower + weight + acceleration + year + origin +
+                           acceleration:year + origin:year + cylinders:displacement, data = Auto)
+
+# Mostrar el resumen del nuevo modelo
+summary(modelo_interaccion_log)
+
+```
+
+### Transformación $Log(X)$
+
+Observamos que al realizar la transformación logarítmica, nuestro modelo mejora considerablemente. El coeficiente de $R^{2}$ alcanza un valor de 0.893 y el error estándar se reduce a 0.11. Sin embargo, vamos a ver cómo cambian los residuos después de esta transformación.
+
+```{r}
+# Obtener los residuos del modelo
+residuos_modelo <- residuals(modelo_interaccion_log)
+
+# QQ plot de los residuos
+qqnorm(residuos_modelo)
+qqline(residuos_modelo)
+
+# Gráfica de distribución de los residuos con línea en y = 0
+plot(residuos_modelo, ylab = "Residuos", xlab = "Índice de Observación",
+     main = "Distribución de los Residuos")
+abline(h = 0, col = "red")  # Línea en y = 0
+
+```
+
+Observamos que los residuos se asemejan un poco menos a una distribución normal. Las colas en los cuantiles negativos se alejan un poco en comparación con nuestro modelo anterior. Sin embargo, respecto a la distribución de los residuos, la transformación logarítmica elimina el problema de heterocedasticidad y nuestros residuos parecen ser más constantes.
