@@ -1,0 +1,134 @@
+---
+title: "Taller 2 Minería de Datos"
+author: "Manuel Sanchez y David Moreno"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: false
+    theme: cosmo
+    highlight: tango
+---
+
+
+### Universidad de los Andes Minería de Datos – MIIA 4200 
+
+Se ha venido consolidando información en los últimos años sobre usuarios, en donde se incluye su nombre, apellido, edad, estrato social, entre otros. Sin embargo, en muchas oportunidades no se cuenta con información completa sobre algunas variables no críticas
+como podría ser el género de la persona.
+
+Considere que usted tiene una tarea de clasificar como “Masculino” o “Femenino” una lista de personas solo contemplando su primer nombre. Por ejemplo, se asocia a María con un género Femenino y Ricardo con un género Masculino. Este ejercicio es sencillo y se basa un poco en la experiencia que se tiene del analista, pero ¿qué pasa si tiene que repetir este ejercicio de manera continua y con una gran cantidad de registros? En ese caso se complica un poco ese proceso de clasificación y se requieren de herramientas de Minería de Datos.
+
+Para su alivio se cuenta con información que puede llegar a ser bastante útil en R-Project:
+*•* Se cuenta con el paquete genero, el cual tiene una base de 9810 nombres en español usando el comando names_gender_es
+*•* Hay algunas herramientas que se pueden usar para extraer información como:
+
+- 𝑠𝑡𝑟𝑠𝑝𝑙𝑖𝑡("𝑎𝑏𝑐","") la cual genera una lista con cada una de las palabras del texto seleccionado (“a”, “b”, “c”)
+- 𝑙𝑒𝑡𝑡𝑒𝑟𝑠 y 𝐿𝐸𝑇𝑇𝐸𝑅𝑆 contiene una lista de letras en minúscula o mayúscula del alfabeto en español
+- 𝑛𝑐ℎ𝑎𝑟(𝑥) permite conocer la longitud de un texto
+- 𝑠𝑢𝑏𝑠𝑡𝑟("𝑀𝑖𝑛𝑒𝑟í𝑎", 1, 2) extraer los primeros dos caracteres (“Mi”)
+- 𝑠𝑢𝑏𝑠𝑡𝑟("𝑀𝑖𝑛𝑒𝑟𝑖𝑎", 𝑛𝑐ℎ𝑎𝑟("𝑀𝑖𝑛𝑒𝑟𝑖𝑎") − 𝑁𝑢𝑚 + 1, 𝑛𝑐ℎ𝑎𝑟("𝑀𝑖𝑛𝑒𝑟𝑖𝑎")) para extraer 𝑁𝑢𝑚 caracteres de un texto
+- 𝑥[! 𝑖𝑠. 𝑛𝑎(𝑥)] permite eliminar los NA de mi vector 𝑥
+
+Tomando en cuenta lo anterior, se le pide que contemple un problema de clasificación usando como muestra de entrenamiento el 90% de la base de names_gender_es y el resto como muestra de prueba. Para ello, se le pide que considere que use un problema de
+K-vecinos más cercanos usando la función knn de R.
+
+
+
+
+```{r setup, include=FALSE}
+
+library(genero)
+data("names_gender_es")
+attach(names_gender_es)
+library(tidyverse)
+library(stringi)
+head(names_gender_es)
+```
+
+### Limpieza y creación de las variables
+
+Primero notamos que hay algunos strings que que no representan la información, por ejemplo vemos a un string como \\u00f que posiblemente se debe que el archivo tiene una codificacion de tipo UNICODE, por lo se buscara una funcion que nos ayudara a la trasnformacion de este para que los datos sera lo mas legibles posibles y se entienda completamente la naturaleza del nombre. Por lo que el plan de accion es el siguiente:
+
+A. Se realiza una limpieza del dato nombre para poder capturar de la mejor manera las caracteristicas del mismo.
+B. Se crearan columnas, cada una representando alguna caracteristica del string, que pueda servinor a diferencia si es hombre o si es mujer. variables en donde se pueda extraer informacion del nombre y que pueda resultar relevantes para predecir el sexo
+C. Con la nuevas variables creadas procedemos a crear una muestra test y de entrenamiento para realizar el algoritmo de k-vecinos con el fin de clasificarlos y poder tener un medida de precision de este algoritmo al predecir la muestra test.
+
+El siguiente codigo: hace la limpieza y creacion de la nuevas variables
+
+```{r }
+Nombres <- names_gender_es %>%
+  mutate(
+    Longitud = nchar(stri_unescape_unicode(name)),
+    Cuenta_A = stri_count_fixed(stri_trans_tolower(stri_unescape_unicode(name)), "a"),
+    Cuenta_Vocales = stri_count_regex(stri_trans_tolower(stri_unescape_unicode(name)), "[aeiou]"),
+    Num_Consonantes = stri_count_regex(stri_trans_tolower(stri_unescape_unicode(name)), "[bcdfghjklmnpqrstvwxyz]"),
+    Terminacion = as.factor(case_when(
+      stri_sub(stri_unescape_unicode(name), -1, -1) %in% c("a", "y") ~ 1,
+      stri_sub(stri_unescape_unicode(name), -1, -1) %in% c("o") ~ 2,
+      TRUE ~ 3)
+    ),
+    Tiene_Acentos_Principales = ifelse(str_detect(stri_unescape_unicode(name), "[áéíóúüñ]"), 1, 0)
+  )
+
+
+```
+
+Las variables que se han definido capturan diferentes aspectos de los nombres que son relevantes para nuestra clasificación. Por ejemplo, la variable "Longitud" simplemente cuenta la cantidad de letras en un nombre, "Cuenta_A" y "Cuenta_Vocales" se centran en conteos específicos dentro del nombre: la primera cuenta la cantidad de letras "a" presentes, mientras que la segunda cuenta el número total de vocales. "Num_Consonantes" ofrece un complemento a esta información al contar la cantidad de consonantes en el nombre. La variable "Terminacion" es una característica categórica que clasifica los nombres según su última letra, asignando diferentes valores según si terminan en "A" o "Y", en "O", o en cualquier otro carácter. Por último, "Tiene_Acentos_Principales" detecta la presencia de acentos principales, como tildes o diéresis.
+
+
+
+### Variables
+
+
+1. Longitud: Cantidad de letras del nombre
+2. Cuenta_A: Cantidad de "a" del nombre
+3. Cuenta_Vocales: Cantidad de vocales del nombre
+4. Num_Consonantes: Cantidad de consonantes del nombre
+5. Terminacion: Es una variables de 3 categorias: 1 si termina en A-Y, 2 si termina O y 3 en otro caso.
+6. Tiene_Acentos_Principales: Es una variable que detecta si el nombre posee algun acento como tilde, diericis.
+
+
+### Test y Entrenamiento division
+
+Con el paso de limpieza y construccion de variables concluidos, procedemos a nuestra nueva base, construir la muestra de entrenamiento sera la cual se realizara el algoritmo de K-vecinos y la muestra test la cual mediremos la precision de este, para ellos se coloca una semilla para replicar los resultados.
+
+```{r}
+set.seed(123) # Semilla 
+
+# Dividir el conjunto de datos en conjuntos de entrenamiento y prueba
+indices_entrenamiento <- sample(1:nrow(Nombres), 0.9 * nrow(Nombres))  # 90% para entrenamiento
+datos_entrenamiento <- Nombres[indices_entrenamiento, ]
+datos_prueba <- Nombres[-indices_entrenamiento, ]
+
+```
+
+### Modelado y Evaluación
+
+A continuacion seleccionaremos las variables predictoras para la clasificacion de los nombres en Masculino o Femenino despues de realizar el algoritmo, se procede a calcular la precision del modelo y asi mismo construir la matriz de confunsion para detectar cuales son los principales problemas de este metodo de clasificacion.
+
+```{r}
+
+library(class) # Carga la librería para KNN
+
+features <- c("Longitud", "Cuenta_A", "Cuenta_Vocales", "Num_Consonantes", "Terminacion","Tiene_Acentos_Principales")
+target <- "gender"  
+
+# Entrenar el modelo KNN
+modelo_knn <- knn(train = datos_entrenamiento[, features], 
+                  test = datos_prueba[, features], 
+                  cl = datos_entrenamiento[[target]], 
+                  k = 5)  
+
+# Evaluar el modelo
+precision <- sum(modelo_knn == datos_prueba[[target]]) / nrow(datos_prueba)
+cat("Precisión del modelo KNN:", precision, "\n")
+
+# Matriz de confusión para una evaluación detallada
+conf_matrix <- table(Real = datos_prueba[[target]], Prediccion = modelo_knn)
+print(conf_matrix)
+
+``` 
+La precisión del modelo es de aproximadamente un 78%, lo que significa que el algoritmo de k-vecinos coincide en 78 de cada 100 casos con los resultados reales, lo cual es bastante bueno.
+
+La matriz de confusión revela que el modelo muestra una mayor precisión al predecir nombres masculinos, con 467 aciertos y 62 equivocaciones al clasificar hombres como mujeres. Sin embargo, presenta un desempeño menos preciso al predecir nombres femeninos, con 302 predicciones correctas frente a 150 errores, donde nombres de mujeres fueron confundidos con los de hombres. Esta disparidad en el rendimiento podría atribuirse a algunas características capturadas que no logran diferenciar claramente entre los sexos. Sin embargo para solo tener el primer nombre de un nombre, produce resultados bastante buenos.
