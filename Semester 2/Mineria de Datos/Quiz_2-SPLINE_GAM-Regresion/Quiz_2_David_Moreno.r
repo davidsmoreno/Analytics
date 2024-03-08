@@ -150,35 +150,3 @@ ggpairs(Auto[, 1:8])  # Seleccionar solo las primeras 8 columnas ya que 'name' e
 
 
 colnames(Auto)
-
-
-library(tidyverse)
-library(stringi)
-
-Nombres <- names_gender_es %>%
-  mutate(
-    Nombre_codificado = stri_unescape_unicode(name),
-    Longitud = nchar(Nombre_codificado),
-    Cuenta_A = stri_count_fixed(stri_trans_tolower(Nombre_codificado), "a"),
-    Cuenta_Vocales = stri_count_regex(stri_trans_tolower(Nombre_codificado), "[aeiou]"),
-    Letra_Final = substring(Nombre_codificado, nchar(Nombre_codificado)),
-    Num_Consonantes = stri_count_regex(stri_trans_tolower(Nombre_codificado), "[bcdfghjklmnpqrstvwxyz]"),
-    Tiene_Subcadena_xxx = as.integer(stri_detect_fixed(stri_trans_tolower(Nombre_codificado), "xxx")), # Sustituye 'xxx' por las subcadenas específicas que te interesen
-    Bi_grama_Final = stri_sub(Nombre_codificado, -2),
-    Tri_grama_Final = stri_sub(Nombre_codificado, -3)
-    # Añade más características según sea necesario
-  )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
