@@ -1,0 +1,35 @@
+---
+title: "Support Vector Machine"
+author: "David Moreno"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: false
+    theme: cosmo
+    highlight: tango
+---
+
+
+### Universidad de los Andes Minería de Datos – MIIA 4200 
+
+### Support Vector Machine a R Aproach
+
+
+```{r }
+
+#Import the librararies for the SVM
+library(e1071)
+
+
+set.seed(1234)
+
+x<-matrix(rnorm(20*2), ncol=2)
+y<-c(rep(-1,10), rep(1,10))
+
+x[y==1,] <- x[y==1,] + 1
+
+plot(x, col=(3-y))
+```
+
